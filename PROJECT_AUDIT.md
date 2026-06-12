@@ -2,7 +2,7 @@
 
 Audit date: 2026-06-12
 
-Scope: current repository review after adding the Supabase foundation, seed workflow, FIFA import backend, admin tournament APIs, prediction scoring backend, Phase 8 live score sync foundation, Phase 1 authenticated user dashboard, Phase 2 super admin dashboard foundation, Phase 3 analytics capture, Phase 4 cinematic hero visuals, and Phase 5 favicon/PWA icons. Validation run: `npm.cmd run typecheck` and `npm.cmd run build`.
+Scope: current repository review after adding the Supabase foundation, seed workflow, FIFA import backend, admin tournament APIs, prediction scoring backend, Phase 8 live score sync foundation, Phase 1 authenticated user dashboard, Phase 2 super admin dashboard foundation, Phase 3 analytics capture, Phase 4 cinematic hero visuals, Phase 5 favicon/PWA icons, and Phase 6 platform hardening (offline page, ICS fixes, ESLint, schedule import script, one-paste DB setup, live Supabase environment verification). Validation run: `npm.cmd run typecheck`, `npm.cmd run lint`, and `npm.cmd run build`.
 
 ## 1. Existing architecture
 
@@ -124,10 +124,11 @@ Important API wiring notes:
 - `ServiceWorkerRegister` registers `/sw.js` in production.
 - `PWAInstallPrompt` listens for `beforeinstallprompt` and stores dismissal in localStorage.
 
+- `/offline` and `/ar/offline` provide a precached offline fallback page; failed page navigations serve the locale-matching offline page.
+- `scripts/import-schedule.mjs` imports the schedule into Supabase through the REST API with the service-role key.
+
 PWA gaps:
 
-- `package.json` still references a missing schedule-import script.
-- No offline page exists.
 - Push handlers exist, but there is no subscription UI, push backend, VAPID setup, or notification preferences.
 - Manifest shortcuts are default-route/English only.
 
@@ -139,11 +140,12 @@ PWA gaps:
 - `buildICS()` creates calendar events with UID, DTSTAMP, DTSTART, DTEND, SUMMARY, LOCATION, DESCRIPTION, URL, and one display alarm.
 - ICS export route supports all matches, selected match numbers, one team, multiple teams, one group, saved matches, and favorite teams.
 
+- Team-scope ICS export now resolves the bracket, so knockout matches a team has reached are included with real team names.
+- ICS event `URL` and Google Calendar links are locale-aware (`/ar/matches/...` for Arabic).
+- ICS folding counts UTF-8 octets per RFC 5545 and never splits a multi-byte character, so Arabic output is valid.
+
 Calendar gaps:
 
-- Team-scope ICS export still checks static group-stage slots, so it does not include resolved knockout matches for a team.
-- Arabic ICS descriptions can use `/ar/matches/...`, but event `URL` still uses the default `/matches/...` route.
-- ICS folding uses character length, not byte/octet length, which can be invalid for Arabic text.
 - Calendar month navigation is hardcoded to June and July 2026.
 - There is no webcal feed, user-specific secure calendar URL, timezone selector, or persisted reminder preference.
 
@@ -184,8 +186,8 @@ World Cup data caveat:
 
 ## 8. Missing features
 
-- Supabase migrations are authored but not applied from this environment. The Supabase CLI is not installed locally.
-- Supabase seed SQL is generated, but it has not been applied from this environment.
+- Supabase migrations and seed are authored but still not applied to a live project. Verified on 2026-06-12 against the configured project (`NEXT_PUBLIC_SUPABASE_URL`): the auth endpoint is healthy and the publishable key is valid, but the database has no application tables (`PGRST205`), and the configured `SUPABASE_SERVICE_ROLE_KEY` is rejected with HTTP 401 (invalid or revoked secret key).
+- The configured project does not belong to the Supabase account connected to this workspace, and that account's free plan already has two active projects, so a replacement project could not be created from here. Provisioning needs a one-time owner decision (see recommendations). `npm run db:setup-sql` now produces a one-paste setup bundle for whichever project is chosen.
 - The import/live-score architecture exists, but there is still no confirmed official FIFA feed/source, provider key configured in this repo, external match ID mapping, or scheduled ingestion job.
 - Phase 3 basic page-view, session heartbeat, and presence capture is wired, but richer product-event capture is not yet connected to every interaction.
 - Optional GA4/GTM IDs are supported, but no real measurement/container ID is configured in the repository.
@@ -195,8 +197,6 @@ World Cup data caveat:
 - Admin result UI now uses protected backend routes for manual score/status updates, and the super admin dashboard now includes role/status management, content controls, analytics, prediction analytics, and sync status. Event editing and external match ID mapping are still not exposed in the UI.
 - Predictions, maps, and bracket UI were intentionally not expanded in this phase.
 - No tests exist for RLS expectations, API auth, standings, tiebreakers, bracket resolution, third-place allocation, ICS generation, or PWA behavior.
-- No ESLint config exists; `next lint` is deprecated and not CI-safe.
-- Missing referenced package script remains: `scripts/import-schedule.mjs`.
 - Demo/local mode is still available when Supabase env vars are absent. Production should fail closed or clearly disable write/admin flows.
 
 ## 9. Build errors
@@ -204,9 +204,10 @@ World Cup data caveat:
 Current validation:
 
 - `npm.cmd run typecheck`: passed.
-- `npm.cmd run build`: passed with `NODE_OPTIONS=--max-old-space-size=4096`.
-- Local route smoke: `GET http://localhost:3002/admin` returned HTTP 200 from `next dev`.
-- Local route smoke: `GET http://localhost:3003/` returned HTTP 200 from `next dev` and included the hero legend markup.
+- `npm.cmd run lint`: passed (ESLint 9 flat config, `next/core-web-vitals` + `next/typescript`).
+- `npm.cmd run build`: passed with `NODE_OPTIONS=--max-old-space-size=4096` (270 static pages, including `/en/offline` and `/ar/offline`).
+- Production route smoke on `next start`: `/offline`, `/ar/offline`, `/api/calendar/ics?scope=team:MEX` (en/ar), and `/api/calendar/ics?scope=group:A` all returned HTTP 200.
+- Arabic ICS output verified: max line length 73 octets, locale-aware `/ar/matches/...` URLs.
 
 Resolved blockers in this phase:
 
@@ -224,18 +225,17 @@ Remaining build/process notes:
 - The build can emit a non-fatal Supabase/Edge runtime warning from the middleware import path.
 - Do not run `npm.cmd run typecheck` in parallel with `npm.cmd run build`; Next regenerates `.next/types` during build and can make a concurrent `tsc` process report transient missing generated files.
 - In-app Browser verification was blocked by the browser runtime failing to launch in this Windows sandbox; the route was verified with `Invoke-WebRequest` instead.
-- Lint remains unresolved because the repo has no ESLint config and `next lint` is deprecated.
 
 ## 10. Recommendations
 
-1. Apply and verify Supabase migrations.
-   - Install/use Supabase CLI or run the SQL in the Supabase dashboard.
+1. Decide on the production Supabase project, then provision it.
+   - Either keep the currently configured project (apply `supabase/setup.generated.sql` in its dashboard SQL editor and rotate the secret key), or free a slot/upgrade in the connected account and create a dedicated project.
+   - Run `npm run db:setup-sql` and paste the bundle once; then set valid `NEXT_PUBLIC_SUPABASE_*` and `SUPABASE_SERVICE_ROLE_KEY` values in `.env.local`.
    - Verify RLS policies with real authenticated, anonymous, and admin users.
 
-2. Apply and verify production seed data.
-   - Run `npm run seed:sql`, then apply `supabase/seed.sql` after migrations.
+2. Verify production seed data and imports.
    - Add provenance fields or documentation for the official data source.
-   - Connect the import services to a verified FIFA feed/source or operational import job.
+   - Connect the import services to a verified FIFA feed/source or operational import job (`npm run import:schedule` covers the static schedule).
 
 3. Finish write-path consistency.
    - Reconcile saved matches and favorite teams across every non-dashboard component, not only dashboard and match cards.
@@ -252,17 +252,15 @@ Remaining build/process notes:
    - Add admin dashboard filters for date range, locale, device, and country.
 
 6. Complete PWA assets and behavior.
-   - Add an offline fallback page.
    - Add push subscription storage and backend delivery before exposing push as a real feature.
 
-7. Improve calendar export.
-   - Use resolved matches for team calendar exports.
-   - Make ICS URLs locale-aware.
-   - Fold ICS lines by octets for Arabic-safe output.
+7. Improve calendar export further.
+   - Add a webcal feed, timezone selector, and persisted reminder preferences.
+   - Make calendar month navigation data-driven instead of hardcoded June/July 2026.
 
 8. Add focused tests and CI checks.
    - Cover standings, bracket propagation, third-place allocation, ICS output, auth APIs, and Supabase/local data merging.
-   - Replace deprecated lint workflow with ESLint CLI plus a checked-in config.
+   - Wire `npm run lint` and `npm run typecheck` into CI.
 
 ## Supabase foundation completed in this phase
 
@@ -387,6 +385,25 @@ Remaining build/process notes:
   - `public/icons/apple-touch-icon.png`
 - Updated localized layout metadata to include SVG favicon and 32px PNG favicon entries.
 - The existing manifest icon paths now resolve to real files.
+
+## Phase 6 platform hardening completed
+
+Supabase environment verification (2026-06-12):
+
+- The configured project's auth endpoint is healthy and the `sb_publishable_` key authenticates successfully.
+- The configured project's database contains none of the authored tables (`PGRST205` for every expected table), confirming migrations and seed were never applied.
+- The configured `sb_secret_` service-role key is rejected with HTTP 401, so all service-role backend paths (analytics tracking, admin aggregation, imports, rankings) would fail even after migrations.
+- The configured project is not in the Supabase account connected to this workspace; creating a replacement project there failed because the free plan's two active-project slots are already used by unrelated apps.
+
+Changes in this phase:
+
+- Added `scripts/lib/schedule-data.mjs` and refactored `scripts/generate-seed-sql.mjs` to share the data loading/mapping logic (regenerated `seed.sql` is byte-identical).
+- Added `scripts/generate-setup-sql.mjs` and `npm run db:setup-sql`, which bundle all migrations plus the seed into gitignored `supabase/setup.generated.sql` for one-paste provisioning.
+- Added the previously missing `scripts/import-schedule.mjs` (`npm run import:schedule`): REST-based schedule upsert using the service-role key, reading `.env.local` when env vars are absent.
+- Added `/offline` (`src/app/[locale]/offline/page.tsx`) with localized copy, precached it for both locales in `public/sw.js` (cache version `wc26-v2`), and made failed page navigations fall back to the locale-matching offline page.
+- Fixed ICS folding to count UTF-8 octets without splitting multi-byte characters, made event `URL`/Google Calendar links locale-aware, and switched team-scope ICS export to the resolved bracket so a team's knockout matches are included.
+- Added ESLint 9 flat config (`eslint.config.mjs`, `next/core-web-vitals` + `next/typescript`), pinned `eslint-config-next@15` to match Next 15, replaced the deprecated `next lint` script with `eslint .`, and fixed the four reported problems.
+- Documented one-paste provisioning and admin promotion in `supabase/README.md`; documented modern key formats in `.env.example`.
 
 ## Mock and hardcoded data inventory
 
