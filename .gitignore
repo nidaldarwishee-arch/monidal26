@@ -29,3 +29,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# generated one-paste DB setup bundle (npm run db:setup-sql)
+/supabase/setup.generated.sql

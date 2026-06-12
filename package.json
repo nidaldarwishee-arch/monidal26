@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit --pretty false",
     "icons": "node scripts/generate-icons.mjs",
     "seed:sql": "node scripts/generate-seed-sql.mjs",
+    "db:setup-sql": "node scripts/generate-setup-sql.mjs",
     "import:schedule": "node scripts/import-schedule.mjs"
   },
   "dependencies": {
