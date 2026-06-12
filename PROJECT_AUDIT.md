@@ -2,33 +2,42 @@
 
 Audit date: 2026-06-12
 
-Scope: static repository review plus `npm.cmd run build`, `npx.cmd tsc --noEmit --pretty false`, and `npm.cmd run lint`. No implementation code was changed.
+Scope: current repository review after adding the Supabase foundation and authentication routes. Validation run: `npm.cmd run typecheck` and `npm.cmd run build`.
 
 ## 1. Existing architecture
 
 - Stack: Next.js 15 App Router, React 19, TypeScript strict mode, Tailwind CSS v4, next-intl, next-themes, Leaflet/react-leaflet, Supabase SSR/client libraries.
-- Routing: app routes live under `src/app/[locale]`; `next-intl` uses locales `en` and `ar` with `localePrefix: "as-needed"`. English is the default route (`/`), Arabic uses `/ar`.
-- Layout: `src/app/[locale]/layout.tsx` sets `lang` and `dir` (`rtl` for Arabic), loads Google fonts via `next/font`, wraps pages in theme, i18n, header, footer, bottom nav, PWA prompt, and service-worker registration.
-- Data layer: tournament source data is static TypeScript in `src/data/teams.ts`, `src/data/venues.ts`, `src/data/matches.ts`, and `src/data/results.ts`.
-- Domain layer: standings, bracket resolution, time formatting, local state, server data merging, and ICS generation live in `src/lib`.
-- Supabase integration is optional. `getSupabaseServer()` and `getSupabaseBrowser()` return `null` when public Supabase env vars are missing, and the app falls back to browser-only local demo mode.
-- Server state: official results are derived from hardcoded `SEED_RESULTS` plus Supabase `match_results` rows when configured.
-- Client state: `src/lib/store.ts` keeps profile, predictions, favorites, saved matches, and local admin results in localStorage under `wc26:v1`.
-- UI architecture: route pages are thin and delegate most behavior to reusable client components under `src/components`.
-- Middleware: `src/middleware.ts` only runs next-intl routing. There is no Supabase session refresh in middleware.
+- Routing: localized app routes live under `src/app/[locale]`; `next-intl` uses `en` and `ar` with `localePrefix: "as-needed"`. English is the default route and Arabic uses `/ar`.
+- Layout: `src/app/[locale]/layout.tsx` sets `lang` and `dir`, loads Google fonts via `next/font`, and wraps pages with theme, i18n, header, footer, bottom nav, PWA prompt, and service worker registration.
+- Supabase structure now exists under `supabase/` with `config.toml`, `README.md`, and SQL migrations in `supabase/migrations/`.
+- Supabase app helpers now live in `src/lib/supabase/`:
+  - `env.ts` reads public Supabase configuration safely.
+  - `client.ts` creates the browser client.
+  - `server.ts` creates the cookie-aware server client.
+  - `middleware.ts` refreshes auth cookies in Next middleware.
+  - `auth.ts` contains route protection and current-user/profile helpers.
+  - `actions.ts` contains sign-in, sign-up, and sign-out server actions.
+  - `database.types.ts` provides typed table contracts for the authored schema.
+- Middleware now composes next-intl routing with Supabase session refresh in `src/middleware.ts`.
+- Data layer is still primarily static TypeScript in `src/data/teams.ts`, `src/data/venues.ts`, `src/data/matches.ts`, and `src/data/results.ts`.
+- Client state still uses `src/lib/store.ts` localStorage for profile, predictions, favorites, saved matches, and local admin results.
+- Server state merges `SEED_RESULTS` with Supabase `match_results` rows when Supabase is configured.
 
 ## 2. Existing pages
 
-- `/` and `/ar`: home page with hero, quick links, hardcoded tournament counts, next kickoff, today's/upcoming matches, and featured matches.
-- `/matches` and `/ar/matches`: all matches with filters by date, round, group, team, and venue.
-- `/matches/[n]` and `/ar/matches/[n]`: statically generated match details for all 104 matches, with kickoff times, venue link, calendar export, share, progression links, prediction form, feeder matches, and group meetings.
+- `/` and `/ar`: home page with hero, quick links, tournament counts, next kickoff, upcoming matches, and featured matches.
+- `/matches` and `/ar/matches`: match explorer with filters by date, round, group, team, and venue.
+- `/matches/[n]` and `/ar/matches/[n]`: statically generated match details for all 104 matches, including kickoff, venue, calendar export, share, progression links, prediction form, feeder matches, and group meetings.
 - `/groups` and `/ar/groups`: 12 group tabs with standings and fixtures.
-- `/rounds` and `/ar/rounds`: group/knockout round explorer plus bracket tree and predicted bracket toggle.
+- `/rounds` and `/ar/rounds`: round explorer, knockout bracket, and predicted bracket toggle.
 - `/map` and `/ar/map`: Leaflet venue map with group path, knockout path, and team journey modes.
 - `/calendar` and `/ar/calendar`: month/list calendar plus ICS export controls.
-- `/auth` and `/ar/auth`: email/password and magic-link auth when Supabase is configured; local profile fallback otherwise.
-- `/dashboard` and `/ar/dashboard`: user hub for favorites, saved matches, predictions, prediction score, and local reset.
-- `/admin` and `/ar/admin`: result entry dashboard; role-gated only when Supabase is configured, open in demo mode.
+- `/login` and `/ar/login`: Supabase email/password sign-in form.
+- `/register` and `/ar/register`: Supabase email/password registration form.
+- `/auth` and `/ar/auth`: compatibility route that redirects to localized `/login`.
+- `/dashboard` and `/ar/dashboard`: protected dashboard route; unauthenticated users redirect to login with a `next` parameter.
+- `/admin` and `/ar/admin`: existing result entry dashboard; role handling still depends on existing admin code and RLS/API checks.
+- `/auth/callback`: server route for exchanging Supabase auth codes and redirecting to the requested next path.
 
 ## 3. Existing APIs
 
@@ -37,12 +46,15 @@ Scope: static repository review plus `npm.cmd run build`, `npx.cmd tsc --noEmit 
 - `GET /api/groups`: returns group IDs with static teams and match numbers.
 - `GET /api/standings`: returns live group standings and best third-place ranking from seeded/database results.
 - `GET /api/bracket`: returns resolved knockout matches and progression connections.
-- `GET /api/calendar/ics`: returns an ICS file for `all`, `matches:...`, `team:...`, `teams:...`, or `group:...` scope.
-- `GET /api/predictions`: returns signed-in user's Supabase predictions.
+- `GET /api/calendar/ics`: returns an ICS file for all matches, selected matches, team/team list, group, saved, or favorites scopes.
+- `GET /api/predictions`: returns the signed-in user's Supabase predictions.
 - `POST /api/predictions`: validates and upserts a signed-in user's Supabase prediction.
-- `POST /api/results`: admin-only result publishing endpoint with validation and an `admin_logs` insert.
+- `POST /api/results`: admin-only result publishing endpoint with validation and `admin_logs` insert.
 
-Important API wiring note: the UI does not consistently use these write APIs. `useSavePrediction()` writes directly to Supabase from the browser, and `AdminResultEditor` writes/deletes `match_results` directly from the browser instead of using `/api/predictions` or `/api/results`.
+Important API wiring notes:
+
+- Prediction and admin UI still also write directly to Supabase from browser components. The server APIs exist, but UI write paths are not yet fully centralized through them.
+- Public read APIs still resolve mostly from static data and derived local logic rather than Supabase tables.
 
 ## 4. Existing components
 
@@ -51,201 +63,185 @@ Important API wiring note: the UI does not consistently use these write APIs. `u
 - Match/tournament display: `HomeLive`, `Countdown`, `MatchCard`, `MatchDetail`, `MatchesExplorer`, `GroupTabs`, `GroupTable`, `RoundsExplorer`, `RoundTabs`, `BracketTree`, `TeamLabel`, `TeamFlag`.
 - Calendar: `CalendarExplorer`, `CalendarExportButton`.
 - Map: `MapSection`, `MatchMap`.
-- Auth/user/admin: `AuthPanel`, `UserDashboard`, `AdminDashboard`, `AdminResultEditor`, `PredictionForm`.
+- Auth/user/admin: `AuthForm`, legacy `AuthPanel`, `UserDashboard`, `AdminDashboard`, `AdminResultEditor`, `PredictionForm`.
 
 ## 5. Existing PWA features
 
-- `src/app/manifest.ts` defines app name, short name, description, start URL, scope, standalone display, portrait orientation, theme/background colors, English language metadata, icon references, and shortcuts.
+- `src/app/manifest.ts` defines app metadata, standalone display, theme/background colors, icon references, and shortcuts.
 - `src/app/[locale]/layout.tsx` adds manifest metadata, Apple web app settings, theme colors, and icon metadata.
-- `public/sw.js` includes:
-  - install-time precache for selected shell routes and `/api/matches`;
-  - network-first strategy for same-origin pages/APIs;
-  - cache-first strategy for Next static assets, `/icons/`, flag images, and CARTO map tiles;
-  - network-only handling for calendar ICS downloads;
-  - cache cleanup by version;
-  - push notification and notification click handlers.
-- `ServiceWorkerRegister` registers `/sw.js` only in production.
+- `public/sw.js` includes precache, network-first handling for pages/APIs, cache-first handling for static assets/icons/flags/map tiles, network-only handling for ICS downloads, cache cleanup, push notification handling, and notification click handling.
+- `ServiceWorkerRegister` registers `/sw.js` in production.
 - `PWAInstallPrompt` listens for `beforeinstallprompt` and stores dismissal in localStorage.
 
 PWA gaps:
 
-- `public/icons` does not exist, but the manifest and metadata reference `/icons/icon-192.png`, `/icons/icon-512.png`, `/icons/icon-512-maskable.png`, and `/icons/apple-touch-icon.png`.
-- `package.json` has an `icons` script pointing to `scripts/generate-icons.mjs`, but there is no `scripts` directory.
+- `public/icons` still does not exist, but manifest and metadata reference icon files there.
+- `package.json` still references missing scripts for icon generation and data import/seed.
 - No offline page exists.
-- Push handlers exist, but there is no subscription UI, push service, VAPID/backend integration, or notification preferences.
-- Manifest shortcuts are English/default-route only.
+- Push handlers exist, but there is no subscription UI, push backend, VAPID setup, or notification preferences.
+- Manifest shortcuts are default-route/English only.
 
 ## 6. Existing calendar features
 
 - Calendar page supports month and list views for June/July 2026.
 - Export UI supports all matches, favorite teams, one group, and saved matches.
 - Per-match calendar button supports ICS download and Google Calendar deep link.
-- `buildICS()` creates RFC 5545-style events with UID, DTSTAMP, DTSTART, DTEND, SUMMARY, LOCATION, DESCRIPTION, URL, and a one-hour display alarm.
-- ICS export scopes support all matches, selected match numbers, one/multiple teams, and one group.
+- `buildICS()` creates calendar events with UID, DTSTAMP, DTSTART, DTEND, SUMMARY, LOCATION, DESCRIPTION, URL, and one display alarm.
+- ICS export route supports all matches, selected match numbers, one team, multiple teams, one group, saved matches, and favorite teams.
 
-Calendar issues:
+Calendar gaps:
 
-- Team-scope ICS export only checks static `h`/`a` slots in `MATCHES`, so it does not include resolved knockout matches for a team even though the route comment says it should.
-- Arabic ICS descriptions use `/ar/matches/...`, but event `URL` always uses `/matches/...`.
-- ICS folding uses character length, not octet length, which can be invalid for Arabic/non-ASCII text.
+- Team-scope ICS export still checks static group-stage slots, so it does not include resolved knockout matches for a team.
+- Arabic ICS descriptions can use `/ar/matches/...`, but event `URL` still uses the default `/matches/...` route.
+- ICS folding uses character length, not byte/octet length, which can be invalid for Arabic text.
 - Calendar month navigation is hardcoded to June and July 2026.
-- There is no webcal/subscribed calendar URL, user-specific secure calendar feed, timezone selector, or reminder preference persistence.
+- There is no webcal feed, user-specific secure calendar URL, timezone selector, or persisted reminder preference.
 
 ## 7. Existing World Cup functionality
 
-- Static 48-team dataset, including group assignment, English/Arabic names, flag ISO codes, and host markers.
-- Static 16-venue dataset, including English/Arabic names, city, country, coordinates, timezone, and capacity.
+- Static 48-team dataset with group assignment, English/Arabic names, flag ISO codes, and host markers.
+- Static 16-venue dataset with English/Arabic names, city, country, coordinates, timezone, and capacity.
 - Static 104-match schedule with UTC kickoff times, venue IDs, group-stage slots, knockout placeholders, and match numbers.
 - Group standings engine with points, goal difference, goals for, head-to-head mini-table handling, and alphabetical fallback.
-- Best third-place ranking returns top 8 third-placed teams.
-- Bracket engine resolves:
-  - direct team slots;
-  - group winners/runners-up;
-  - best third-place slots;
-  - winners/losers of previous matches;
-  - champion display after final result.
-- Third-place allocation for Round of 32 is handled with backtracking against allowed group sets.
+- Best third-place ranking returns the top 8 third-placed teams.
+- Bracket engine resolves direct team slots, group winners/runners-up, best third-place slots, previous-match winners/losers, and champion display after the final.
+- Third-place allocation for the Round of 32 is handled with backtracking against allowed group sets.
 - Predictions can preview bracket progression and score user accuracy.
-- Admin result entry updates standings/bracket immediately in demo mode and can write to Supabase when configured.
+- Admin result entry updates standings/bracket immediately in demo/local state and can write official results to Supabase when configured.
 - Interactive map shows venues, per-venue matches, group paths, knockout connections, and team journeys.
 
 World Cup data caveat:
 
-- The repo claims the team/group/schedule files are official, but the source of truth is hardcoded and there is no import script, migration, provenance metadata, validation test, or external sync in the repository. Treat this as hardcoded tournament data until validated against the official feed/source.
+- The repo still treats hardcoded files as the tournament source of truth. There is no verified import pipeline, provenance metadata, validation test, or external sync in this repository yet.
 
 ## 8. Missing features
 
-- Supabase migrations/schema are missing. `.env.example` references `/supabase/migrations`, but no `supabase` directory exists.
-- Required database tables are implied but not defined in repo: `profiles`, `match_results`, `user_predictions`, and `admin_logs`.
-- RLS policies are not present, despite code relying on RLS for predictions and admin results.
-- No server-side auth callback route or Supabase session-refresh middleware is present.
-- User profile/favorites/saved matches are not fully persisted to Supabase.
-- Existing Supabase predictions are not hydrated into local UI state after login; the app saves predictions to Supabase but primarily reads from localStorage.
-- Admin UI bypasses `/api/results`, so server-side admin validation and `admin_logs` are skipped on the main admin workflow.
-- Demo/local mode is available by default whenever Supabase env vars are absent. There is no production guard that fails closed.
-- No README exists, although UI/env copy references README setup instructions.
-- Package scripts reference missing files:
-  - `scripts/generate-icons.mjs`
-  - `scripts/generate-seed-sql.mjs`
-  - `scripts/import-schedule.mjs`
-- No tests exist for standings, tiebreakers, bracket resolution, third-place allocation, ICS generation, API auth, or PWA behavior.
-- No ESLint config exists; the lint command prompts interactively.
-- No `typecheck` script exists.
-- No Vercel configuration is present. This is not strictly required for Next.js, but production env/build expectations are undocumented.
-- No Supabase Realtime/live updates are wired.
-- No protected admin role management flow exists.
-- No production data ingestion path is present for official FIFA data.
-- No notification subscription backend exists.
+- Supabase migrations are authored but not applied from this environment. The Supabase CLI is not installed locally.
+- Supabase tables created in migrations are not seeded with the static World Cup teams, groups, venues, matches, or bracket data yet.
+- User favorites, saved matches, and dashboard preferences are not fully hydrated from Supabase after login.
+- Prediction UI still primarily uses localStorage and direct browser writes rather than a complete server API flow.
+- Admin UI still performs some direct browser writes to `match_results`; it should use `/api/results` consistently so role checks and audit logging always run.
+- Admin role management is not implemented.
+- No production data ingestion path exists for official FIFA data.
+- Predictions, maps, and bracket UI were intentionally not expanded in this phase.
+- No tests exist for RLS expectations, API auth, standings, tiebreakers, bracket resolution, third-place allocation, ICS generation, or PWA behavior.
+- No ESLint config exists; `next lint` is deprecated and not CI-safe.
+- Missing referenced package scripts remain: `scripts/generate-icons.mjs`, `scripts/generate-seed-sql.mjs`, and `scripts/import-schedule.mjs`.
+- Demo/local mode is still available when Supabase env vars are absent. Production should fail closed or clearly disable write/admin flows.
 
 ## 9. Build errors
 
-Commands run:
+Current validation:
 
-- `npm run build` failed in PowerShell because `npm.ps1` is blocked by local execution policy.
-- `npm.cmd run build` inside the restricted sandbox initially failed when `next/font` could not fetch Google Fonts.
-- `npm.cmd run build` with unrestricted execution fetched fonts, compiled webpack, then failed during type checking.
+- `npm.cmd run typecheck`: passed.
+- `npm.cmd run build`: passed after network access was allowed for `next/font` to fetch Google Fonts.
 
-Actual build blocker:
+Resolved blockers in this phase:
 
-```text
-src/components/calendar-export-button.tsx:38:67
-Property 'asChild' does not exist on type 'ButtonProps'.
-```
+- Removed unsupported `asChild` usage from `CalendarExportButton`.
+- Added `typecheck` script.
+- Typed Supabase cookie adapters.
+- Added typed Supabase database contracts so table reads/writes no longer infer as `never`.
+- Aligned app code with the migration column name `winner_team_id`.
+- Added `admin_logs` migration/type because `/api/results` already writes audit entries.
 
-Additional TypeScript errors from `npx.cmd tsc --noEmit --pretty false`:
+Remaining build/process notes:
 
-```text
-src/components/calendar-export-button.tsx(38,67): Property 'asChild' does not exist on type 'ButtonProps'.
-src/lib/supabase/server.ts(24,16): Parameter 'cookiesToSet' implicitly has an 'any' type.
-src/lib/supabase/server.ts(26,37): Binding element 'name' implicitly has an 'any' type.
-src/lib/supabase/server.ts(26,43): Binding element 'value' implicitly has an 'any' type.
-src/lib/supabase/server.ts(26,50): Binding element 'options' implicitly has an 'any' type.
-```
-
-Lint status:
-
-- `npm.cmd run lint` runs `next lint`, which is deprecated and prompts to configure ESLint because no ESLint config exists. This is not CI-safe.
-
-Generated artifacts from verification:
-
-- The build/typecheck created ignored generated files/directories: `.next`, `next-env.d.ts`, and `tsconfig.tsbuildinfo`.
+- Restricted sandbox build initially failed with `EACCES` while fetching Google Fonts through `next/font`. The same build passed when rerun with network permission.
+- Lint remains unresolved because the repo has no ESLint config and `next lint` is deprecated.
 
 ## 10. Recommendations
 
-1. Fix build/typecheck first.
-   - Remove the unsupported `asChild` prop from `CalendarExportButton`.
-   - Type the Supabase cookie adapter in `src/lib/supabase/server.ts`.
-   - Add a `typecheck` script.
-   - Replace `next lint` with ESLint CLI and a checked-in ESLint config.
+1. Apply and verify Supabase migrations.
+   - Install/use Supabase CLI or run the SQL in the Supabase dashboard.
+   - Verify RLS policies with real authenticated, anonymous, and admin users.
 
-2. Decide the production data source.
-   - Move teams, venues, matches, and official results into Supabase or generate the static files from a verified import pipeline.
-   - Add provenance fields/source metadata and automated validation.
-   - Restore/create the missing import and seed scripts or remove the package scripts.
+2. Seed production data.
+   - Create a verified import/seed pipeline for groups, teams, venues, matches, and bracket nodes.
+   - Add provenance fields or documentation for the official data source.
 
-3. Add Supabase schema and RLS.
-   - Create migrations for `profiles`, `match_results`, `user_predictions`, `admin_logs`, plus any favorites/saved-match tables.
-   - Enable RLS on exposed tables.
-   - Protect admin roles so users cannot self-promote.
-   - Document env setup in a README.
+3. Centralize write paths.
+   - Route predictions through `/api/predictions`.
+   - Route admin results through `/api/results`.
+   - Hydrate dashboard state from Supabase on login.
 
-4. Route writes through server APIs.
-   - Make prediction saves use `/api/predictions` and hydrate predictions from Supabase on login.
-   - Make admin result publishing use `/api/results` so role checks, validation, and audit logging run consistently.
+4. Harden authentication and authorization.
+   - Add admin role management that cannot be self-assigned by users.
+   - Decide whether production should fail closed when Supabase env vars are missing.
+   - Add tests for protected dashboard, admin checks, and RLS-sensitive flows.
 
-5. Tighten production mode.
-   - Fail closed or clearly disable auth/admin/prediction writes when Supabase is missing in production.
-   - Remove demo-mode admin access from production builds.
+5. Complete PWA assets and behavior.
+   - Generate `public/icons` assets.
+   - Add an offline fallback page.
+   - Add push subscription storage and backend delivery before exposing push as a real feature.
 
-6. Complete PWA assets and behavior.
-   - Add generated icons under `public/icons`.
-   - Add an offline fallback route/page.
-   - Add push subscription storage and backend delivery before presenting notifications as a real feature.
+6. Improve calendar export.
+   - Use resolved matches for team calendar exports.
+   - Make ICS URLs locale-aware.
+   - Fold ICS lines by octets for Arabic-safe output.
 
-7. Harden calendar export.
-   - Use resolved matches for team-scope exports so knockout matches are included.
-   - Make Arabic ICS `URL` locale-aware.
-   - Fold ICS lines by octets.
-   - Consider webcal feeds for favorites/saved matches.
+7. Add focused tests and CI checks.
+   - Cover standings, bracket propagation, third-place allocation, ICS output, auth APIs, and Supabase/local data merging.
+   - Replace deprecated lint workflow with ESLint CLI plus a checked-in config.
 
-8. Add focused tests.
-   - Cover standings/tiebreakers, third-place ranking/allocation, bracket propagation, ICS output, API auth/validation, and local/Supabase data merging.
+## Supabase foundation completed in this phase
 
-9. Reduce hardcoded production assumptions.
-   - Centralize constants for site URL, external asset hosts, tournament year, calendar months, featured matches, and static counts.
-   - Prefer derived counts from data where possible.
+- Added `supabase/config.toml`.
+- Added `supabase/README.md`.
+- Added migrations:
+  - `202606120001_supabase_foundation.sql`
+  - `202606120002_admin_logs.sql`
+- Created tables:
+  - `profiles`
+  - `teams`
+  - `groups`
+  - `venues`
+  - `matches`
+  - `match_results`
+  - `user_predictions`
+  - `user_favorite_teams`
+  - `calendar_events`
+  - `bracket_nodes`
+  - `bracket_connections`
+  - `admin_logs`
+- Enabled RLS on authored tables.
+- Added policies for public match viewing, authenticated user-owned rows, and admin management.
+- Added Supabase browser, server, middleware, env, auth, server action, and database type helpers.
+- Added `/login`, `/register`, `/dashboard` protection, and `/auth/callback`.
+- Updated navigation/auth links to the new login route.
+- Added localized auth messages.
 
 ## Mock and hardcoded data inventory
 
 Mock/demo runtime data:
 
 - `src/lib/store.ts`: localStorage state under `wc26:v1` for profile, predictions, favorites, saved matches, and local admin results.
-- `src/components/auth-panel.tsx`: local sign-in creates browser-only users with `local-${Date.now()}` IDs and default `Fan` naming.
-- `src/components/admin-dashboard.tsx` and `src/components/admin-result-editor.tsx`: demo mode allows local browser result entry.
+- `src/components/auth-panel.tsx`: legacy local sign-in/demo profile flow remains in the repository.
+- `src/components/admin-dashboard.tsx` and `src/components/admin-result-editor.tsx`: demo/local result entry remains available.
 - `src/lib/hooks.ts`: official client results merge `SEED_RESULTS`, Supabase rows, and local demo admin results.
-- `src/components/pwa-install-prompt.tsx`: localStorage dismissal key `wc26:install-dismissed` for install prompt state.
+- `src/components/pwa-install-prompt.tsx`: localStorage dismissal key `wc26:install-dismissed`.
 
 Hardcoded tournament data:
 
-- `src/data/teams.ts`: 48 teams, FIFA-like IDs, flag ISO codes, English/Arabic names, groups, hosts.
+- `src/data/teams.ts`: 48 teams, IDs, flag ISO codes, English/Arabic names, groups, and host markers.
 - `src/data/venues.ts`: 16 venues with coordinates, timezones, capacities, city/country labels.
 - `src/data/matches.ts`: 104-match schedule, UTC kickoff times, group/round slots, venue assignments, knockout placeholders.
-- `src/data/results.ts`: seeded opening result `{ matchN: 1, homeGoals: 2, awayGoals: 0, status: "played" }`.
+- `src/data/results.ts`: seeded opening result.
 
 Hardcoded UI/product data:
 
-- `src/app/[locale]/page.tsx`: quick links and stat values `104`, `48`, `16`, `16`.
-- `src/components/home-live.tsx`: featured match numbers `[7, 19, 21, 66, 70, 104]`.
-- `src/components/calendar-explorer.tsx`: year `2026`, month indexes for June/July, weekday seed date.
-- `src/components/match-map.tsx`: default map mode/group/team, map center/zoom, country label map, marker letters, CARTO tile URLs.
-- `src/app/manifest.ts`: app metadata, icon paths, shortcut paths.
-- `public/sw.js`: cache version `wc26-v1`, precache URLs, push default title/body/icon.
-- `src/messages/en.json` and `src/messages/ar.json`: static product copy, including setup references to README and demo mode.
+- `src/app/[locale]/page.tsx`: quick links and stat values.
+- `src/components/home-live.tsx`: featured match numbers.
+- `src/components/calendar-explorer.tsx`: year/month assumptions for June and July 2026.
+- `src/components/match-map.tsx`: default map mode/group/team, map center/zoom, country label map, marker letters, and CARTO tile URLs.
+- `src/app/manifest.ts`: app metadata, icon paths, and shortcut paths.
+- `public/sw.js`: cache version, precache URLs, and push notification fallback copy.
+- `src/messages/en.json` and `src/messages/ar.json`: static product copy.
 
 Hardcoded configuration and external services:
 
-- `.env.example`, `src/app/[locale]/layout.tsx`, `src/app/api/calendar/ics/route.ts`, and `src/components/calendar-export-button.tsx`: localhost fallback `http://localhost:3000`.
+- `.env.example`, `src/app/[locale]/layout.tsx`, `src/app/api/calendar/ics/route.ts`, `src/components/calendar-export-button.tsx`, and `src/lib/supabase/actions.ts`: localhost/site URL fallbacks.
 - `next.config.ts`, `src/data/teams.ts`, and `src/components/team-flag.tsx`: `flagcdn.com` for flags.
 - `src/components/match-map.tsx` and `public/sw.js`: CARTO/OpenStreetMap tile hosts.
 - `src/lib/ics.ts`: Google Calendar URL format and `PRODID`.
-- Supabase table names are hardcoded across API/hooks/components: `profiles`, `match_results`, `user_predictions`, `admin_logs`.
+- Supabase table names are hardcoded across migrations, API routes, hooks, and components.
