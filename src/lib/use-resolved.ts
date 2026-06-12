@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { resolveBracket, toResultsMap } from "@/lib/bracket";
+import { resolveBracket } from "@/lib/bracket";
 import { useLocalState } from "@/lib/store";
 import { useOfficialResults } from "@/lib/hooks";
 import type { ResolvedMatch } from "@/lib/types";

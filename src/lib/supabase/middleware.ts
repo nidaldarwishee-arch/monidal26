@@ -10,7 +10,7 @@ export async function updateSession(
   const config = getSupabaseConfig();
   if (!config) return response;
 
-  let supabaseResponse = response;
+  const supabaseResponse = response;
   const setAll: SetAllCookies = (cookiesToSet) => {
     cookiesToSet.forEach(({ name, value }) => {
       request.cookies.set(name, value);

@@ -28,7 +28,6 @@ import { TEAMS, TEAM_MAP } from "@/data/teams";
 import { formatKickoff, hasKickedOff } from "@/lib/time";
 import { useUser } from "@/lib/hooks";
 import { useResolvedMatches } from "@/lib/use-resolved";
-import type { Prediction } from "@/lib/types";
 import { isFinalResultStatus } from "@/lib/types";
 import type { UserDashboardData } from "@/lib/dashboard/service";
 import { Badge } from "@/components/ui/badge";
