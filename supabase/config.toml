@@ -1,0 +1,12 @@
+project_id = "mondial-2026"
+
+[api]
+enabled = true
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+
+[auth]
+enabled = true
+
+[db]
+major_version = 17
