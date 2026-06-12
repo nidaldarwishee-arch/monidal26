@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { HomeLive } from "@/components/home-live";
+import { HeroLegends } from "@/components/hero-legends";
 import { Badge } from "@/components/ui/badge";
 
 const QUICK = [
@@ -36,18 +37,22 @@ export default async function HomePage({
 
   return (
     <div className="space-y-10">
-      <section className="pitch-grid relative -mx-4 -mt-6 px-4 pb-10 pt-12 text-center md:pb-14 md:pt-16">
-        <Badge className="mx-auto">{t("heroBadge")}</Badge>
-        <h1 className="mx-auto mt-4 max-w-3xl font-display text-4xl font-bold leading-tight md:text-6xl">
-          {t("heroTitle")}
-        </h1>
-        <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
-          {t("heroSubtitle")}
-        </p>
+      <section className="pitch-grid relative -mx-4 -mt-6 overflow-hidden px-4 pb-10 pt-12 text-center md:pb-14 md:pt-16">
+        <div className="relative z-10">
+          <Badge className="mx-auto">{t("heroBadge")}</Badge>
+          <h1 className="mx-auto mt-4 max-w-3xl font-display text-4xl font-bold leading-tight md:text-6xl">
+            {t("heroTitle")}
+          </h1>
+          <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
+            {t("heroSubtitle")}
+          </p>
+        </div>
+
+        <HeroLegends />
 
         <nav
           aria-label="Quick links"
-          className="mx-auto mt-8 grid max-w-3xl grid-cols-2 gap-3 sm:grid-cols-5"
+          className="relative z-10 mx-auto mt-8 grid max-w-3xl grid-cols-2 gap-3 sm:grid-cols-5"
         >
           {QUICK.map(({ href, key, icon: Icon }) => (
             <Link
@@ -64,7 +69,7 @@ export default async function HomePage({
           ))}
         </nav>
 
-        <dl className="mx-auto mt-8 grid max-w-2xl grid-cols-4 gap-3">
+        <dl className="relative z-10 mx-auto mt-8 grid max-w-2xl grid-cols-4 gap-3">
           {STATS.map((s) => (
             <div key={s.key} className="rounded-xl bg-muted/60 p-3">
               <dt className="sr-only">{t(s.key)}</dt>

@@ -116,6 +116,23 @@ body {
   animation: fade-up 0.45s ease-out both;
 }
 
+@keyframes hero-ball-flight {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  35% { transform: translate3d(120px, -18px, 0) rotate(130deg); }
+  70% { transform: translate3d(260px, 20px, 0) rotate(260deg); }
+}
+.hero-ball {
+  animation: hero-ball-flight 7s ease-in-out infinite;
+}
+
+@keyframes hero-legend-rise {
+  from { opacity: 0; filter: saturate(0.6); }
+  to { opacity: 1; filter: saturate(1); }
+}
+.hero-legend {
+  animation: hero-legend-rise 0.55s ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

@@ -2,7 +2,7 @@
 
 Audit date: 2026-06-12
 
-Scope: current repository review after adding the Supabase foundation, seed workflow, FIFA import backend, admin tournament APIs, prediction scoring backend, Phase 8 live score sync foundation, Phase 1 authenticated user dashboard, Phase 2 super admin dashboard foundation, and Phase 3 analytics capture. Validation run: `npm.cmd run typecheck` and `npm.cmd run build`.
+Scope: current repository review after adding the Supabase foundation, seed workflow, FIFA import backend, admin tournament APIs, prediction scoring backend, Phase 8 live score sync foundation, Phase 1 authenticated user dashboard, Phase 2 super admin dashboard foundation, Phase 3 analytics capture, and Phase 4 cinematic hero visuals. Validation run: `npm.cmd run typecheck` and `npm.cmd run build`.
 
 ## 1. Existing architecture
 
@@ -33,7 +33,7 @@ Scope: current repository review after adding the Supabase foundation, seed work
 
 ## 2. Existing pages
 
-- `/` and `/ar`: home page with hero, quick links, tournament counts, next kickoff, upcoming matches, and featured matches.
+- `/` and `/ar`: home page with cinematic legend hero, animated ball, quick links, tournament counts, next kickoff, upcoming matches, and featured matches.
 - `/matches` and `/ar/matches`: match explorer with filters by date, round, group, team, and venue.
 - `/matches/[n]` and `/ar/matches/[n]`: statically generated match details for all 104 matches, including kickoff, venue, calendar export, share, progression links, prediction form, feeder matches, and group meetings.
 - `/groups` and `/ar/groups`: 12 group tabs with standings and fixtures.
@@ -105,7 +105,7 @@ Important API wiring notes:
 
 - Layout/navigation/PWA: `SiteHeader`, `BottomNav`, `SiteFooter`, `LanguageSwitcher`, `ThemeProvider`, `ThemeToggle`, `PWAInstallPrompt`, `ServiceWorkerRegister`, `AnalyticsTracker`.
 - UI primitives: `Button`, `Card`, `CardHeader`, `CardTitle`, `CardContent`, `Badge`, `Input`, `Label`, `Select`.
-- Match/tournament display: `HomeLive`, `Countdown`, `MatchCard`, `MatchDetail`, `MatchesExplorer`, `GroupTabs`, `GroupTable`, `RoundsExplorer`, `RoundTabs`, `BracketTree`, `TeamLabel`, `TeamFlag`.
+- Match/tournament display: `HeroLegends`, `HomeLive`, `Countdown`, `MatchCard`, `MatchDetail`, `MatchesExplorer`, `GroupTabs`, `GroupTable`, `RoundsExplorer`, `RoundTabs`, `BracketTree`, `TeamLabel`, `TeamFlag`.
 - Calendar: `CalendarExplorer`, `CalendarExportButton`.
 - Map: `MapSection`, `MatchMap`.
 - Auth/user/admin: `AuthForm`, legacy `AuthPanel`, `UserDashboard`, super-admin `AdminDashboard`, `AdminResultEditor`, `PredictionForm`.
@@ -205,6 +205,7 @@ Current validation:
 - `npm.cmd run typecheck`: passed.
 - `npm.cmd run build`: passed with `NODE_OPTIONS=--max-old-space-size=4096`.
 - Local route smoke: `GET http://localhost:3002/admin` returned HTTP 200 from `next dev`.
+- Local route smoke: `GET http://localhost:3003/` returned HTTP 200 from `next dev` and included the hero legend markup.
 
 Resolved blockers in this phase:
 
@@ -366,6 +367,14 @@ Remaining build/process notes:
   - `NEXT_PUBLIC_GTM_ID`
 - Kept analytics silent and non-blocking on the client; failed tracking requests do not interrupt app usage.
 
+## Phase 4 cinematic hero completed
+
+- Added `src/components/hero-legends.tsx`.
+- Added stylized Maradona, Ronaldo, and Messi legend figures to the home hero.
+- Added animated football artwork and reduced-motion-safe CSS hooks in `src/app/globals.css`.
+- Updated the localized home page hero to place the legend scene between the headline and quick navigation.
+- Kept the implementation asset-light and code-native; no external player photos or API calls were added.
+
 ## Mock and hardcoded data inventory
 
 Mock/demo runtime data:
@@ -395,6 +404,7 @@ Hardcoded UI/product data:
 - `public/sw.js`: cache version, precache URLs, and push notification fallback copy.
 - `src/messages/en.json` and `src/messages/ar.json`: static product copy.
 - `src/components/admin-dashboard.tsx`: admin tab labels, dashboard labels, and default content article form values.
+- `src/components/hero-legends.tsx`: stylized legend names, jersey numbers, nations, and kit colors for the hero scene.
 
 Hardcoded configuration and external services:
 
