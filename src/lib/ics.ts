@@ -18,15 +18,24 @@ function escapeText(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
 }
 
-/** Fold lines at 75 octets per RFC 5545. */
+const encoder = new TextEncoder();
+
+/** Fold lines at 75 octets per RFC 5545, never splitting a multi-byte character. */
 function fold(line: string): string {
   const out: string[] = [];
-  let rest = line;
-  while (rest.length > 73) {
-    out.push(rest.slice(0, 73));
-    rest = " " + rest.slice(73);
+  let current = "";
+  let octets = 0;
+  for (const ch of line) {
+    const size = encoder.encode(ch).length;
+    if (octets + size > 73 && current) {
+      out.push(current);
+      current = " ";
+      octets = 1;
+    }
+    current += ch;
+    octets += size;
   }
-  out.push(rest);
+  out.push(current);
   return out.join("\r\n");
 }
 
@@ -96,9 +105,10 @@ export function buildICS(matches: Match[], locale: string, siteUrl: string): str
     const location = venue
       ? `${ar ? venue.nameAr : venue.nameEn}, ${ar ? venue.cityAr : venue.cityEn}, ${venue.country}`
       : "";
+    const matchUrl = `${siteUrl}${ar ? "/ar" : ""}/matches/${m.n}`;
     const description = ar
-      ? `كأس العالم 2026 — المباراة ${m.n}. التفاصيل: ${siteUrl}/ar/matches/${m.n}`
-      : `FIFA World Cup 2026 — Match ${m.n}. Details: ${siteUrl}/matches/${m.n}`;
+      ? `كأس العالم 2026 — المباراة ${m.n}. التفاصيل: ${matchUrl}`
+      : `FIFA World Cup 2026 — Match ${m.n}. Details: ${matchUrl}`;
 
     lines.push(
       "BEGIN:VEVENT",
@@ -109,7 +119,7 @@ export function buildICS(matches: Match[], locale: string, siteUrl: string): str
       fold(`SUMMARY:${escapeText(summary)}`),
       fold(`LOCATION:${escapeText(location)}`),
       fold(`DESCRIPTION:${escapeText(description)}`),
-      fold(`URL:${siteUrl}/matches/${m.n}`),
+      fold(`URL:${matchUrl}`),
       "BEGIN:VALARM",
       "ACTION:DISPLAY",
       fold(`DESCRIPTION:${escapeText(summary)}`),
@@ -137,7 +147,7 @@ export function googleCalendarUrl(m: Match, locale: string, siteUrl: string): st
     text: title,
     dates,
     location,
-    details: `${siteUrl}/matches/${m.n}`,
+    details: `${siteUrl}${ar ? "/ar" : ""}/matches/${m.n}`,
   });
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { MATCHES } from "@/data/matches";
 import { TEAM_MAP } from "@/data/teams";
 import { buildICS } from "@/lib/ics";
+import { getResolvedServer } from "@/lib/server-data";
 import type { Match } from "@/lib/types";
 
 /**
@@ -43,7 +44,16 @@ export async function GET(req: NextRequest) {
     if (ids.length === 0) {
       return NextResponse.json({ error: "Unknown team" }, { status: 400 });
     }
-    matches = MATCHES.filter((m) => ids.includes(m.h) || ids.includes(m.a));
+    // Resolve the bracket so knockout matches a team has reached are included,
+    // materializing resolved team ids into the slots for correct event titles.
+    const resolved = await getResolvedServer();
+    matches = [...resolved.values()]
+      .filter(
+        (m) =>
+          (m.home.teamId && ids.includes(m.home.teamId)) ||
+          (m.away.teamId && ids.includes(m.away.teamId))
+      )
+      .map((m) => ({ ...m, h: m.home.teamId ?? m.h, a: m.away.teamId ?? m.a }));
     name = `world-cup-2026-${ids.join("-").toLowerCase()}`;
   } else if (scope.startsWith("group:")) {
     const g = scope.slice(6).toUpperCase();
