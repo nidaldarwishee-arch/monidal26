@@ -54,6 +54,23 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["groups"]["Insert"]>;
         Relationships: [];
       };
+      match_stages: {
+        Row: {
+          id: "GS" | "R32" | "R16" | "QF" | "SF" | "3P" | "F";
+          name_en: string;
+          name_ar: string;
+          stage_order: number;
+          is_knockout: boolean;
+          created_at: Timestamp;
+          updated_at: Timestamp;
+        };
+        Insert: Omit<Database["public"]["Tables"]["match_stages"]["Row"], "created_at" | "updated_at"> & {
+          created_at?: Timestamp;
+          updated_at?: Timestamp;
+        };
+        Update: Partial<Database["public"]["Tables"]["match_stages"]["Insert"]>;
+        Relationships: [];
+      };
       teams: {
         Row: {
           id: string;

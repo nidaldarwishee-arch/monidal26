@@ -4,6 +4,14 @@ export type GroupId =
 
 export type RoundId = "GS" | "R32" | "R16" | "QF" | "SF" | "3P" | "F";
 
+export interface MatchStage {
+  id: RoundId;
+  nameEn: string;
+  nameAr: string;
+  stageOrder: number;
+  isKnockout: boolean;
+}
+
 export interface Team {
   /** FIFA three-letter code, e.g. "MEX" */
   id: string;
