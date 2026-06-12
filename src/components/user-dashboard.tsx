@@ -47,6 +47,8 @@ type DashboardData = UserDashboardData;
 const COPY = {
   en: {
     loading: "Loading your dashboard...",
+    loadError: "We couldn't load your dashboard. Please try again.",
+    retry: "Try again",
     saveProfile: "Save profile",
     saved: "Saved",
     country: "Country",
@@ -89,6 +91,8 @@ const COPY = {
   },
   ar: {
     loading: "جار تحميل لوحة التحكم...",
+    loadError: "تعذر تحميل لوحة التحكم. حاول مرة أخرى.",
+    retry: "إعادة المحاولة",
     saveProfile: "حفظ الملف",
     saved: "تم الحفظ",
     country: "الدولة",
@@ -203,6 +207,7 @@ export function UserDashboard() {
   const { resolved } = useResolvedMatches();
   const slotName = useSlotName();
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [profileDraft, setProfileDraft] = useState({
     displayName: "",
     country: "",
@@ -212,16 +217,21 @@ export function UserDashboard() {
   const [savingProfile, setSavingProfile] = useState(false);
 
   const loadDashboard = async () => {
-    const response = await fetch("/api/dashboard", { cache: "no-store" });
-    if (!response.ok) return;
-    const payload = (await response.json()) as { dashboard: DashboardData };
-    setDashboard(payload.dashboard);
-    setProfileDraft({
-      displayName: payload.dashboard.profile.display_name ?? "",
-      country: payload.dashboard.profile.country ?? "",
-      favoriteTeamId: payload.dashboard.profile.favorite_team_id ?? "",
-      preferredLanguage: payload.dashboard.profile.preferred_language ?? (locale === "ar" ? "ar" : "en"),
-    });
+    setLoadError(false);
+    try {
+      const response = await fetch("/api/dashboard", { cache: "no-store" });
+      if (!response.ok) throw new Error(`Dashboard request failed (${response.status}).`);
+      const payload = (await response.json()) as { dashboard: DashboardData };
+      setDashboard(payload.dashboard);
+      setProfileDraft({
+        displayName: payload.dashboard.profile.display_name ?? "",
+        country: payload.dashboard.profile.country ?? "",
+        favoriteTeamId: payload.dashboard.profile.favorite_team_id ?? "",
+        preferredLanguage: payload.dashboard.profile.preferred_language ?? (locale === "ar" ? "ar" : "en"),
+      });
+    } catch {
+      setLoadError(true);
+    }
   };
 
   useEffect(() => {
@@ -271,7 +281,16 @@ export function UserDashboard() {
   if (!dashboard) {
     return (
       <div className="mx-auto max-w-md rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-        {copy.loading}
+        {loadError ? (
+          <div className="space-y-4">
+            <p role="alert">{copy.loadError}</p>
+            <Button variant="outline" onClick={() => void loadDashboard()}>
+              {copy.retry}
+            </Button>
+          </div>
+        ) : (
+          copy.loading
+        )}
       </div>
     );
   }

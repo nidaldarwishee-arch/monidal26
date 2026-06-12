@@ -171,6 +171,7 @@
     "redirectNotice": "After authentication you will continue to {path}.",
     "errors": {
       "invalid": "Invalid email or password.",
+      "unconfirmed": "Your email isn't confirmed yet. Open the confirmation link we sent you, then sign in.",
       "config": "Supabase is not configured for authentication.",
       "generic": "Something went wrong. Please try again."
     }

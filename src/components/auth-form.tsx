@@ -17,6 +17,7 @@ function statusText(
   message?: string
 ) {
   if (error === "invalid") return { kind: "error" as const, text: t("errors.invalid") };
+  if (error === "unconfirmed") return { kind: "error" as const, text: t("errors.unconfirmed") };
   if (error === "config") return { kind: "error" as const, text: t("errors.config") };
   if (error) return { kind: "error" as const, text: t("errors.generic") };
   if (message === "verify") return { kind: "message" as const, text: t("verifySent") };

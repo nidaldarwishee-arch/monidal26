@@ -46,7 +46,10 @@ export async function signInAction(formData: FormData) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    authRedirect(locale, "/login", { error: "invalid", next });
+    const unconfirmed =
+      error.code === "email_not_confirmed" ||
+      error.message.toLowerCase().includes("not confirmed");
+    authRedirect(locale, "/login", { error: unconfirmed ? "unconfirmed" : "invalid", next });
   }
 
   if (data.user) {

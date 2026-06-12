@@ -269,14 +269,23 @@ export async function touchLastLogin(supabase: DbClient, userId: string) {
     .eq("id", userId);
 }
 
+// The leaderboard needs the service-role client; degrade to an empty ranking
+// instead of failing the whole dashboard when it is missing or rejected.
+async function loadLeaderboardSafe() {
+  try {
+    return await getPredictionLeaderboard(createServiceRoleClient());
+  } catch {
+    return [];
+  }
+}
+
 export async function getUserDashboard(supabase: DbClient, user: User): Promise<UserDashboardData> {
   await ensureDashboardRows(supabase, user.id);
-  const adminSupabase = createServiceRoleClient();
   const [profile, predictions, results, leaderboard] = await Promise.all([
     loadProfile(supabase, user),
     listUserPredictions(supabase, user.id),
     getOfficialResultsMap(supabase),
-    getPredictionLeaderboard(adminSupabase),
+    loadLeaderboardSafe(),
   ]);
   const scored = scorePredictions(predictions, results);
   const rows = await loadDashboardRows(supabase, user.id);
