@@ -1,0 +1,40 @@
+{
+  "name": "mondial-2026",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FIFA World Cup 2026 Match Center — bilingual EN/AR PWA hub with matches, groups, bracket, map, calendar, predictions and dashboards",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "icons": "node scripts/generate-icons.mjs",
+    "seed:sql": "node scripts/generate-seed-sql.mjs",
+    "import:schedule": "node scripts/import-schedule.mjs"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.49.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^0.510.0",
+    "next": "^15.3.3",
+    "next-intl": "^4.1.0",
+    "next-themes": "^0.4.6",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-leaflet": "^5.0.0",
+    "tailwind-merge": "^3.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.7",
+    "@types/leaflet": "^1.9.17",
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.1.7",
+    "typescript": "^5.8.3"
+  }
+}

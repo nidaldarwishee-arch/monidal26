@@ -1,0 +1,175 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* Light mode — clean, high-contrast, pitch-green accents */
+  --background: #f4f7f5;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --muted: #e8efea;
+  --muted-foreground: #475569;
+  --primary: #15803d;
+  --primary-foreground: #ffffff;
+  --accent: #d97706;
+  --accent-foreground: #ffffff;
+  --border: #d8e2dc;
+  --ring: #15803d;
+  --live: #dc2626;
+  --gold: #b45309;
+}
+
+.dark {
+  /* Dark mode — tournament command center: deep navy, glowing green */
+  --background: #050b14;
+  --foreground: #f1f5f9;
+  --card: #0b1622;
+  --card-foreground: #f1f5f9;
+  --muted: #11202e;
+  --muted-foreground: #94a3b8;
+  --primary: #22c55e;
+  --primary-foreground: #052e16;
+  --accent: #fbbf24;
+  --accent-foreground: #1c1304;
+  --border: #1c2c3d;
+  --ring: #22c55e;
+  --live: #f87171;
+  --gold: #fbbf24;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-live: var(--live);
+  --color-gold: var(--gold);
+  --font-sans: var(--font-body), var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Arabic-first font stack when the document is RTL */
+[dir="rtl"] body,
+[dir="rtl"] .font-display {
+  font-family: var(--font-arabic), var(--font-body), ui-sans-serif, system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+[dir="rtl"] .font-display {
+  letter-spacing: 0;
+}
+
+/* Subtle pitch-line backdrop for hero sections */
+.pitch-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--primary) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--primary) 7%, transparent) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 0%, black 35%, transparent 75%);
+}
+
+/* Live pulse dot */
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.85); }
+}
+.animate-live {
+  animation: live-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  animation: fade-up 0.45s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  html { scroll-behavior: auto; }
+}
+
+/* Leaflet container must have an explicit height and inherit theming */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  background: var(--muted);
+  font-family: var(--font-sans);
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--card);
+  color: var(--card-foreground);
+}
+
+/* Stadium marker */
+.venue-marker {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: 2px solid color-mix(in srgb, var(--primary-foreground) 65%, var(--primary));
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.35);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Hide scrollbars on horizontal tab strips while keeping them scrollable */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Bracket connector elbows (LTR + RTL aware via logical properties) */
+.bracket-connector {
+  border-inline-end: 2px solid var(--border);
+}
+.bracket-connector-h::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 100%;
+  width: 12px;
+  border-top: 2px solid var(--border);
+}
