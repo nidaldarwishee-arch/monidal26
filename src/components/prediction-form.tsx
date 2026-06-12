@@ -146,7 +146,7 @@ export function PredictionForm({ match }: { match: ResolvedMatch }) {
 
         {!user && (
           <p className="text-center text-xs text-muted-foreground">
-            <Link href="/auth" className="font-semibold text-primary hover:underline">
+            <Link href="/login" className="font-semibold text-primary hover:underline">
               {t("signIn")}
             </Link>
           </p>

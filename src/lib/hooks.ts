@@ -22,7 +22,7 @@ export function useOfficialResults(): ResultsMap {
     let cancelled = false;
     supabase
       .from("match_results")
-      .select("match_n, home_goals, away_goals, winner_team, status")
+      .select("match_n, home_goals, away_goals, winner_team_id, status")
       .eq("official", true)
       .then(({ data }) => {
         if (cancelled || !data) return;
@@ -31,7 +31,7 @@ export function useOfficialResults(): ResultsMap {
             matchN: row.match_n,
             homeGoals: row.home_goals,
             awayGoals: row.away_goals,
-            winner: row.winner_team ?? undefined,
+            winner: row.winner_team_id ?? undefined,
             status: row.status === "live" ? "live" : "played",
           }))
         );
@@ -110,7 +110,7 @@ export function useSavePrediction() {
         match_n: p.matchN,
         home_goals: p.homeGoals,
         away_goals: p.awayGoals,
-        winner_team: p.winner ?? null,
+        winner_team_id: p.winner ?? null,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id,match_n" }

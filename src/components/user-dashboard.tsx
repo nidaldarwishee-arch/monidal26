@@ -44,7 +44,7 @@ export function UserDashboard() {
         <UserRound className="mx-auto size-12 text-muted-foreground" aria-hidden />
         <p className="text-muted-foreground">{t("signInPrompt")}</p>
         <Link
-          href="/auth"
+          href="/login"
           className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors duration-200 hover:bg-primary/85"
         >
           {ta("signIn")}

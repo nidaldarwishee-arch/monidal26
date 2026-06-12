@@ -1,15 +1,5 @@
-import { setRequestLocale, getTranslations } from "next-intl/server";
-import { AuthPanel } from "@/components/auth-panel";
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
-  const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "auth" });
-  return { title: t("signInTitle") };
-}
+import { redirect } from "next/navigation";
+import { localizedPath } from "@/lib/supabase/auth";
 
 export default async function AuthPage({
   params,
@@ -17,6 +7,5 @@ export default async function AuthPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  setRequestLocale(locale);
-  return <AuthPanel />;
+  redirect(localizedPath(locale, "/login"));
 }

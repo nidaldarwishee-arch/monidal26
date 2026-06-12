@@ -2,24 +2,30 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/database.types";
+import {
+  getRequiredSupabaseConfig,
+  getSupabaseConfig,
+  isSupabaseConfigured,
+} from "@/lib/supabase/env";
 
-export function isSupabaseConfigured(): boolean {
-  return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
-}
+export { isSupabaseConfigured };
 
-let client: SupabaseClient | null = null;
+type BrowserClient = SupabaseClient<Database>;
 
-/** Browser Supabase client, or null when the app runs in local demo mode. */
-export function getSupabaseBrowser(): SupabaseClient | null {
-  if (!isSupabaseConfigured()) return null;
+let client: BrowserClient | null = null;
+
+export function createClient(): BrowserClient {
   if (!client) {
-    client = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const { url, key } = getRequiredSupabaseConfig();
+    client = createBrowserClient<Database>(url, key) as unknown as BrowserClient;
   }
   return client;
+}
+
+/** Browser Supabase client, or null when the app runs in local demo mode. */
+export function getSupabaseBrowser(): BrowserClient | null {
+  const config = getSupabaseConfig();
+  if (!config) return null;
+  return createClient();
 }

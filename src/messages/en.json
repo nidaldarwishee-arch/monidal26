@@ -166,8 +166,10 @@
     "demoTitle": "Local mode",
     "demoNote": "No database is connected, so your profile lives in this browser only. Connect Supabase (see README) for real accounts and sync.",
     "demoStart": "Continue with a local profile",
+    "redirectNotice": "After authentication you will continue to {path}.",
     "errors": {
       "invalid": "Invalid email or password.",
+      "config": "Supabase is not configured for authentication.",
       "generic": "Something went wrong. Please try again."
     }
   },

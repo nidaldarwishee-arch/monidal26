@@ -50,7 +50,7 @@ export function AdminResultEditor({ match }: { match: ResolvedMatch }) {
           match_n: match.n,
           home_goals: home,
           away_goals: away,
-          winner_team: result.winner ?? null,
+          winner_team_id: result.winner ?? null,
           status: "played",
           official: true,
           updated_at: new Date().toISOString(),

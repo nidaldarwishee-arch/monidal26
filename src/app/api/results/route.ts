@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
       match_n: matchN,
       home_goals: homeGoals,
       away_goals: awayGoals,
-      winner_team: winner,
+      winner_team_id: winner,
       status,
       official: true,
       updated_by: auth.user.id,

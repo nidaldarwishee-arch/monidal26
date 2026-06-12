@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit --pretty false",
     "icons": "node scripts/generate-icons.mjs",
     "seed:sql": "node scripts/generate-seed-sql.mjs",
     "import:schedule": "node scripts/import-schedule.mjs"

@@ -59,7 +59,7 @@ export function SiteHeader() {
           <LanguageSwitcher />
           <ThemeToggle />
           <Link
-            href={user ? "/dashboard" : "/auth"}
+            href={user ? "/dashboard" : "/login"}
             aria-label={user ? t("dashboard") : t("signIn")}
             className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-xl px-3 text-sm font-semibold transition-colors duration-200 hover:bg-muted"
           >

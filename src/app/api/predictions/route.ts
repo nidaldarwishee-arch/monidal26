@@ -18,7 +18,7 @@ export async function GET() {
   }
   const { data, error } = await supabase
     .from("user_predictions")
-    .select("match_n, home_goals, away_goals, winner_team, updated_at")
+    .select("match_n, home_goals, away_goals, winner_team_id, updated_at")
     .eq("user_id", auth.user.id)
     .order("match_n");
   if (error) {
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
       match_n: matchN,
       home_goals: homeGoals,
       away_goals: awayGoals,
-      winner_team: winner,
+      winner_team_id: winner,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id,match_n" }

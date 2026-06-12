@@ -35,7 +35,7 @@ export function CalendarExportButton({
 
   if (!match) {
     return (
-      <Button variant={variant} size={size} className={className} asChild={false}
+      <Button variant={variant} size={size} className={className}
         onClick={() => (window.location.href = icsHref)}>
         <CalendarPlus aria-hidden />
         {label ?? t("addToCalendar")}

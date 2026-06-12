@@ -1,5 +1,6 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { UserDashboard } from "@/components/user-dashboard";
+import { localizedPath, requireUser } from "@/lib/supabase/auth";
 
 export async function generateMetadata({
   params,
@@ -18,5 +19,6 @@ export default async function DashboardPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  await requireUser(locale, localizedPath(locale, "/dashboard"));
   return <UserDashboard />;
 }
