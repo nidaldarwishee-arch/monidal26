@@ -10,6 +10,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { SiteFooter } from "@/components/site-footer";
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import { ServiceWorkerRegister } from "@/components/sw-register";
+import { AnalyticsTracker } from "@/components/analytics-tracker";
 import "../globals.css";
 
 const inter = Inter({
@@ -115,6 +116,7 @@ export default async function LocaleLayout({
             <BottomNav />
             <PWAInstallPrompt />
             <ServiceWorkerRegister />
+            <AnalyticsTracker />
           </NextIntlClientProvider>
         </ThemeProvider>
       </body>

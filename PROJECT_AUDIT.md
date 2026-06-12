@@ -2,7 +2,7 @@
 
 Audit date: 2026-06-12
 
-Scope: current repository review after adding the Supabase foundation, seed workflow, FIFA import backend, admin tournament APIs, prediction scoring backend, Phase 8 live score sync foundation, Phase 1 authenticated user dashboard, and Phase 2 super admin dashboard foundation. Validation run: `npm.cmd run typecheck` and `npm.cmd run build`.
+Scope: current repository review after adding the Supabase foundation, seed workflow, FIFA import backend, admin tournament APIs, prediction scoring backend, Phase 8 live score sync foundation, Phase 1 authenticated user dashboard, Phase 2 super admin dashboard foundation, and Phase 3 analytics capture. Validation run: `npm.cmd run typecheck` and `npm.cmd run build`.
 
 ## 1. Existing architecture
 
@@ -21,6 +21,7 @@ Scope: current repository review after adding the Supabase foundation, seed work
   - `admin.ts` creates a server-side service-role client for admin-only backend work after an admin session check.
   - `database.types.ts` provides typed table contracts for the authored schema.
 - Phase 2 admin backend helpers live in `src/lib/admin/super-dashboard.ts` and aggregate Supabase analytics sessions/events, user profiles, prediction rankings, match state, content articles, presence, and live-score sync logs.
+- Phase 3 analytics helpers live in `src/lib/analytics/service.ts` and sanitize public tracking payloads before server-side Supabase writes.
 - Backend services now exist for FIFA imports, admin tournament management, and prediction scoring:
   - `src/lib/fifa/importers/` validates and imports teams, fixtures, and results.
   - `src/lib/admin/tournament.ts` validates and manages teams, venues, matches, and results.
@@ -62,6 +63,7 @@ Scope: current repository review after adding the Supabase foundation, seed work
 - `DELETE /api/predictions/[matchN]`: deletes one signed-in user's prediction.
 - `GET /api/predictions/score`: returns scored prediction items and summary for the signed-in user.
 - `GET /api/predictions/rankings`: returns an authenticated leaderboard derived from all predictions.
+- `POST /api/analytics/track`: records sanitized page-view, session heartbeat, visibility, and product events to Supabase analytics tables and authenticated presence.
 - `GET /api/dashboard`: returns the complete authenticated user dashboard payload.
 - `PATCH /api/dashboard/profile`: updates user profile fields.
 - `POST/DELETE /api/dashboard/favorite-teams`: follows/unfollows favorite teams with notification state.
@@ -101,7 +103,7 @@ Important API wiring notes:
 
 ## 4. Existing components
 
-- Layout/navigation/PWA: `SiteHeader`, `BottomNav`, `SiteFooter`, `LanguageSwitcher`, `ThemeProvider`, `ThemeToggle`, `PWAInstallPrompt`, `ServiceWorkerRegister`.
+- Layout/navigation/PWA: `SiteHeader`, `BottomNav`, `SiteFooter`, `LanguageSwitcher`, `ThemeProvider`, `ThemeToggle`, `PWAInstallPrompt`, `ServiceWorkerRegister`, `AnalyticsTracker`.
 - UI primitives: `Button`, `Card`, `CardHeader`, `CardTitle`, `CardContent`, `Badge`, `Input`, `Label`, `Select`.
 - Match/tournament display: `HomeLive`, `Countdown`, `MatchCard`, `MatchDetail`, `MatchesExplorer`, `GroupTabs`, `GroupTable`, `RoundsExplorer`, `RoundTabs`, `BracketTree`, `TeamLabel`, `TeamFlag`.
 - Calendar: `CalendarExplorer`, `CalendarExportButton`.
@@ -184,7 +186,8 @@ World Cup data caveat:
 - Supabase migrations are authored but not applied from this environment. The Supabase CLI is not installed locally.
 - Supabase seed SQL is generated, but it has not been applied from this environment.
 - The import/live-score architecture exists, but there is still no confirmed official FIFA feed/source, provider key configured in this repo, external match ID mapping, or scheduled ingestion job.
-- Phase 2 analytics tables and APIs are ready, but page-view/session capture instrumentation is not wired across the public UI yet.
+- Phase 3 basic page-view, session heartbeat, and presence capture is wired, but richer product-event capture is not yet connected to every interaction.
+- Optional GA4/GTM IDs are supported, but no real measurement/container ID is configured in the repository.
 - Phase 2 content management stores articles, but public article/news pages are not implemented yet.
 - User dashboard now hydrates from Supabase, but existing non-dashboard favorite/saved-match UI still uses localStorage as an optimistic layer and should be fully reconciled across all views.
 - Prediction UI now saves through `/api/predictions`; localStorage remains an optimistic mirror for fast client updates.
@@ -243,8 +246,8 @@ Remaining build/process notes:
    - Add tests for protected dashboard, admin checks, and RLS-sensitive flows.
 
 5. Wire analytics capture.
-   - Add privacy-conscious page-view/session instrumentation to feed `analytics_sessions`, `analytics_events`, and `user_presence`.
-   - Add GA4/GTM only in the next analytics phase and keep external IDs server/config driven.
+   - Expand product-event capture for prediction saves, calendar exports, favorites, saved matches, map interactions, language changes, and PWA installs.
+   - Add admin dashboard filters for date range, locale, device, and country.
 
 6. Complete PWA assets and behavior.
    - Generate `public/icons` assets.
@@ -352,6 +355,17 @@ Remaining build/process notes:
 - Upgraded `/admin` into a super admin dashboard with analytics, user management, prediction analytics, match operations/result entry, content management, and live monitoring tabs.
 - Kept predictions, maps, and bracket UI unchanged for this phase.
 
+## Phase 3 analytics capture completed
+
+- Added `src/lib/analytics/service.ts` for analytics payload validation, JSON sanitization, session upserts, event inserts, and authenticated presence updates.
+- Added `POST /api/analytics/track` as a server-side analytics write endpoint using the Supabase service-role client without exposing keys to the browser.
+- Added `AnalyticsTracker` to record page views, session heartbeats, visibility-hidden events, visitor IDs, session IDs, page counts, device type, browser, language, and referrer.
+- Wired `AnalyticsTracker` into the localized app layout.
+- Added optional public analytics environment variables:
+  - `NEXT_PUBLIC_GA_MEASUREMENT_ID`
+  - `NEXT_PUBLIC_GTM_ID`
+- Kept analytics silent and non-blocking on the client; failed tracking requests do not interrupt app usage.
+
 ## Mock and hardcoded data inventory
 
 Mock/demo runtime data:
@@ -386,6 +400,7 @@ Hardcoded configuration and external services:
 
 - `.env.example`, `src/app/[locale]/layout.tsx`, `src/app/api/calendar/ics/route.ts`, `src/components/calendar-export-button.tsx`, and `src/lib/supabase/actions.ts`: localhost/site URL fallbacks.
 - `src/lib/supabase/admin.ts`: expects `SUPABASE_SERVICE_ROLE_KEY` for server-only admin/import/ranking work.
+- `src/components/analytics-tracker.tsx`: reads optional `NEXT_PUBLIC_GA_MEASUREMENT_ID` and `NEXT_PUBLIC_GTM_ID`.
 - `next.config.ts`, `src/data/teams.ts`, and `src/components/team-flag.tsx`: `flagcdn.com` for flags.
 - `src/components/match-map.tsx` and `public/sw.js`: CARTO/OpenStreetMap tile hosts.
 - `src/lib/ics.ts`: Google Calendar URL format and `PRODID`.
