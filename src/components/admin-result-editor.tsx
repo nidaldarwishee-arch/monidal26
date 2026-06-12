@@ -7,6 +7,7 @@ import type { MatchResultStatus, ResolvedMatch } from "@/lib/types";
 import { VENUE_MAP } from "@/data/venues";
 import { formatDate, formatTime } from "@/lib/time";
 import { store } from "@/lib/store";
+import { AdminMatchEvents } from "@/components/admin-match-events";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -185,6 +186,8 @@ export function AdminResultEditor({ match }: { match: ResolvedMatch }) {
           </Button>
         )}
       </div>
+
+      <AdminMatchEvents match={match} />
     </article>
   );
 }
