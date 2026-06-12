@@ -29,6 +29,10 @@ export interface Database {
           display_name: string | null;
           avatar_url: string | null;
           role: "user" | "admin";
+          country: string | null;
+          favorite_team_id: string | null;
+          preferred_language: "en" | "ar";
+          last_login_at: Timestamp | null;
           created_at: Timestamp;
           updated_at: Timestamp;
         };
@@ -38,6 +42,10 @@ export interface Database {
           display_name?: string | null;
           avatar_url?: string | null;
           role?: "user" | "admin";
+          country?: string | null;
+          favorite_team_id?: string | null;
+          preferred_language?: "en" | "ar";
+          last_login_at?: Timestamp | null;
           created_at?: Timestamp;
           updated_at?: Timestamp;
         };
@@ -358,14 +366,121 @@ export interface Database {
         Row: {
           user_id: string;
           team_id: string;
+          notifications_enabled: boolean;
           created_at: Timestamp;
         };
         Insert: {
           user_id: string;
           team_id: string;
+          notifications_enabled?: boolean;
           created_at?: Timestamp;
         };
         Update: Partial<Database["public"]["Tables"]["user_favorite_teams"]["Insert"]>;
+        Relationships: [];
+      };
+      user_saved_matches: {
+        Row: {
+          user_id: string;
+          match_n: number;
+          notifications_enabled: boolean;
+          created_at: Timestamp;
+        };
+        Insert: {
+          user_id: string;
+          match_n: number;
+          notifications_enabled?: boolean;
+          created_at?: Timestamp;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_saved_matches"]["Insert"]>;
+        Relationships: [];
+      };
+      user_notification_preferences: {
+        Row: {
+          user_id: string;
+          match_reminders: boolean;
+          team_news: boolean;
+          prediction_reminders: boolean;
+          result_alerts: boolean;
+          created_at: Timestamp;
+          updated_at: Timestamp;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["user_notification_preferences"]["Row"],
+          | "match_reminders"
+          | "team_news"
+          | "prediction_reminders"
+          | "result_alerts"
+          | "created_at"
+          | "updated_at"
+        > & {
+          match_reminders?: boolean;
+          team_news?: boolean;
+          prediction_reminders?: boolean;
+          result_alerts?: boolean;
+          created_at?: Timestamp;
+          updated_at?: Timestamp;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_notification_preferences"]["Insert"]>;
+        Relationships: [];
+      };
+      user_dashboard_stats: {
+        Row: {
+          user_id: string;
+          matches_viewed: number;
+          pages_viewed: number;
+          time_spent_seconds: number;
+          favorite_team_activity: number;
+          prediction_submissions: number;
+          calendar_exports: number;
+          language_changes: number;
+          updated_at: Timestamp;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["user_dashboard_stats"]["Row"],
+          | "matches_viewed"
+          | "pages_viewed"
+          | "time_spent_seconds"
+          | "favorite_team_activity"
+          | "prediction_submissions"
+          | "calendar_exports"
+          | "language_changes"
+          | "updated_at"
+        > & {
+          matches_viewed?: number;
+          pages_viewed?: number;
+          time_spent_seconds?: number;
+          favorite_team_activity?: number;
+          prediction_submissions?: number;
+          calendar_exports?: number;
+          language_changes?: number;
+          updated_at?: Timestamp;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_dashboard_stats"]["Insert"]>;
+        Relationships: [];
+      };
+      user_achievements: {
+        Row: {
+          id: string;
+          user_id: string;
+          achievement_key:
+            | "first_prediction"
+            | "ten_correct_predictions"
+            | "group_stage_expert"
+            | "knockout_expert"
+            | "world_champion_predictor";
+          progress: Json | null;
+          unlocked_at: Timestamp;
+          created_at: Timestamp;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["user_achievements"]["Row"],
+          "id" | "unlocked_at" | "created_at"
+        > & {
+          id?: string;
+          unlocked_at?: Timestamp;
+          created_at?: Timestamp;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_achievements"]["Insert"]>;
         Relationships: [];
       };
       calendar_events: {

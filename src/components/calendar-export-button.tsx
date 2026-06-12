@@ -18,6 +18,7 @@ export function CalendarExportButton({
   variant = "outline",
   size = "sm",
   className,
+  onExport,
 }: {
   /** ics API scope string, e.g. "all", "team:MEX", "group:A", "matches:1,7" */
   scope: string;
@@ -27,6 +28,7 @@ export function CalendarExportButton({
   variant?: "default" | "outline" | "ghost" | "secondary";
   size?: "default" | "sm" | "lg" | "icon";
   className?: string;
+  onExport?: () => void;
 }) {
   const t = useTranslations("match");
   const locale = useLocale();
@@ -36,7 +38,10 @@ export function CalendarExportButton({
   if (!match) {
     return (
       <Button variant={variant} size={size} className={className}
-        onClick={() => (window.location.href = icsHref)}>
+        onClick={() => {
+          onExport?.();
+          window.location.href = icsHref;
+        }}>
         <CalendarPlus aria-hidden />
         {label ?? t("addToCalendar")}
       </Button>
@@ -62,7 +67,10 @@ export function CalendarExportButton({
             <a
               href={icsHref}
               className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200 hover:bg-muted"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                onExport?.();
+                setOpen(false);
+              }}
             >
               <CalendarPlus className="size-4 text-primary" aria-hidden />
               {t("downloadIcs")}
@@ -76,7 +84,10 @@ export function CalendarExportButton({
               target="_blank"
               rel="noopener noreferrer"
               className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200 hover:bg-muted"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                onExport?.();
+                setOpen(false);
+              }}
             >
               <ExternalLink className="size-4 text-primary" aria-hidden />
               {t("googleCalendar")}

@@ -6,6 +6,7 @@ import {
   listUserPredictions,
   saveUserPrediction,
 } from "@/lib/predictions/service";
+import { incrementDashboardStat } from "@/lib/dashboard/service";
 
 /** GET /api/predictions - the signed-in user's predictions and score. */
 export async function GET() {
@@ -37,6 +38,7 @@ export async function POST(req: NextRequest) {
   try {
     const result = await saveUserPrediction(context.supabase, context.user.id, body);
     if (result.issues.length) return NextResponse.json(result, { status: 400 });
+    await incrementDashboardStat(context.supabase, context.user.id, "prediction_submissions", 1);
     return NextResponse.json({ prediction: result.prediction });
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "Failed to save prediction.", 500);

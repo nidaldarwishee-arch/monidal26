@@ -75,6 +75,15 @@ export function MatchCard({
       ? `${match.result.penaltyHomeGoals}:${match.result.penaltyAwayGoals}`
       : null;
 
+  const toggleSaved = async () => {
+    store.toggleSaved(match.n);
+    await fetch("/api/dashboard/saved-matches", {
+      method: saved ? "DELETE" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ matchN: match.n, notificationsEnabled: true }),
+    }).catch(() => null);
+  };
+
   return (
     <article
       className={cn(
@@ -138,7 +147,7 @@ export function MatchCard({
           <button
             aria-label={t("saveMatch")}
             aria-pressed={saved}
-            onClick={() => store.toggleSaved(match.n)}
+            onClick={toggleSaved}
             className={cn(
               "ms-auto cursor-pointer rounded-lg p-2 transition-colors duration-200 hover:bg-muted",
               saved ? "text-accent" : "text-muted-foreground"

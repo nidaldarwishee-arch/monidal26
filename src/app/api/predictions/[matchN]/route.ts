@@ -3,6 +3,7 @@ import { jsonError } from "@/lib/api/admin";
 import { parseMatchNumberParam } from "@/lib/api/params";
 import { requirePredictionUser } from "@/lib/api/predictions";
 import { deleteUserPrediction, saveUserPrediction } from "@/lib/predictions/service";
+import { incrementDashboardStat } from "@/lib/dashboard/service";
 
 export async function PATCH(
   req: NextRequest,
@@ -20,6 +21,7 @@ export async function PATCH(
   try {
     const result = await saveUserPrediction(context.supabase, context.user.id, body, matchN);
     if (result.issues.length) return NextResponse.json(result, { status: 400 });
+    await incrementDashboardStat(context.supabase, context.user.id, "prediction_submissions", 1);
     return NextResponse.json({ prediction: result.prediction });
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "Failed to update prediction.", 500);

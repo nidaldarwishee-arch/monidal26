@@ -2,7 +2,7 @@
 
 Audit date: 2026-06-12
 
-Scope: current repository review after adding the Supabase foundation, seed workflow, FIFA import backend, admin tournament APIs, prediction scoring backend, and Phase 8 live score sync foundation. Validation run: `npm.cmd run typecheck` and `npm.cmd run build`.
+Scope: current repository review after adding the Supabase foundation, seed workflow, FIFA import backend, admin tournament APIs, prediction scoring backend, Phase 8 live score sync foundation, and Phase 1 authenticated user dashboard. Validation run: `npm.cmd run typecheck` and `npm.cmd run build`.
 
 ## 1. Existing architecture
 
@@ -61,6 +61,12 @@ Scope: current repository review after adding the Supabase foundation, seed work
 - `DELETE /api/predictions/[matchN]`: deletes one signed-in user's prediction.
 - `GET /api/predictions/score`: returns scored prediction items and summary for the signed-in user.
 - `GET /api/predictions/rankings`: returns an authenticated leaderboard derived from all predictions.
+- `GET /api/dashboard`: returns the complete authenticated user dashboard payload.
+- `PATCH /api/dashboard/profile`: updates user profile fields.
+- `POST/DELETE /api/dashboard/favorite-teams`: follows/unfollows favorite teams with notification state.
+- `POST/DELETE /api/dashboard/saved-matches`: follows/unfollows matches with notification state.
+- `PATCH /api/dashboard/notifications`: updates dashboard notification preferences.
+- `POST /api/dashboard/stats`: increments authenticated dashboard statistics counters.
 - `POST /api/results`: admin-only result publishing endpoint with validation and `admin_logs` insert.
 - `POST /api/admin/import/teams`: admin-only FIFA teams importer.
 - `POST /api/admin/import/fixtures`: admin-only FIFA fixture importer.
@@ -84,7 +90,7 @@ Scope: current repository review after adding the Supabase foundation, seed work
 
 Important API wiring notes:
 
-- Prediction UI still writes through the Supabase browser client; admin result writes now go through protected server API routes.
+- Prediction UI and admin result writes now go through protected server API routes.
 - Public tournament read APIs still resolve mostly from static data and derived local logic, with Supabase results overlaid.
 
 ## 4. Existing components
@@ -97,6 +103,7 @@ Important API wiring notes:
 - Auth/user/admin: `AuthForm`, legacy `AuthPanel`, `UserDashboard`, `AdminDashboard`, `AdminResultEditor`, `PredictionForm`.
 - Match display now supports live/halftime badges, current minute, current score, full-time badge, and penalty score display when result metadata exists.
 - `AdminResultEditor` now supports manual live, halftime, and finished status fallback through protected admin API routes.
+- `UserDashboard` now renders authenticated Supabase profile, prediction center, followed teams, followed matches, calendar export controls, user stats, and achievements.
 
 ## 5. Existing PWA features
 
@@ -149,6 +156,8 @@ Calendar gaps:
 - Live score provider abstraction now supports `manual`, `api-football`, `football-data`, and `sportmonks` adapters.
 - Live score sync services now exist for `fetchLiveMatches()`, `fetchMatchResult()`, `syncFixtures()`, `syncLiveScores()`, `syncFinishedResults()`, `updateStandingsAfterResult()`, `updateBracketAfterResult()`, and `recalculatePredictionScores()`.
 - Live/halftime scores are displayed without affecting group standings, bracket progression, or prediction scoring until the result status is final.
+- Authenticated dashboard now persists profile metadata, followed teams, followed matches, notification preferences, aggregate user stats, and achievements in Supabase.
+- Prediction submissions and match bookmark/follow actions now write through protected APIs instead of direct browser Supabase writes.
 - Interactive map shows venues, per-venue matches, group paths, knockout connections, and team journeys.
 
 World Cup data caveat:
@@ -168,8 +177,8 @@ World Cup data caveat:
 - Supabase migrations are authored but not applied from this environment. The Supabase CLI is not installed locally.
 - Supabase seed SQL is generated, but it has not been applied from this environment.
 - The import/live-score architecture exists, but there is still no confirmed official FIFA feed/source, provider key configured in this repo, external match ID mapping, or scheduled ingestion job.
-- User favorites, saved matches, and dashboard preferences are not fully hydrated from Supabase after login.
-- Prediction UI still primarily uses localStorage/direct browser writes rather than the new prediction backend endpoints.
+- User dashboard now hydrates from Supabase, but existing non-dashboard favorite/saved-match UI still uses localStorage as an optimistic layer and should be fully reconciled across all views.
+- Prediction UI now saves through `/api/predictions`; localStorage remains an optimistic mirror for fast client updates.
 - Admin result UI now uses protected backend routes for manual score/status updates, but there is no full admin UI yet for live sync logs, event editing, or external match ID mapping.
 - Admin role management is not implemented.
 - Predictions, maps, and bracket UI were intentionally not expanded in this phase.
@@ -212,10 +221,10 @@ Remaining build/process notes:
    - Add provenance fields or documentation for the official data source.
    - Connect the import services to a verified FIFA feed/source or operational import job.
 
-3. Centralize write paths.
-   - Route prediction UI saves through `/api/predictions` and `/api/predictions/[matchN]`.
-   - Route admin UI result publishing through `/api/admin/results` or `/api/results`.
-   - Hydrate dashboard state from Supabase on login.
+3. Finish write-path consistency.
+   - Reconcile saved matches and favorite teams across every non-dashboard component, not only dashboard and match cards.
+   - Keep localStorage only as an optimistic cache for authenticated users.
+   - Add server-side tests for dashboard profile, follow/unfollow, notification, and stats endpoints.
 
 4. Harden authentication and authorization.
    - Add admin role management that cannot be self-assigned by users.
@@ -244,6 +253,8 @@ Remaining build/process notes:
   - `202606120001_supabase_foundation.sql`
   - `202606120002_admin_logs.sql`
   - `202606120003_match_stages_and_seed_integrity.sql`
+  - `202606120004_live_score_sync.sql`
+  - `202606120005_user_dashboard_phase1.sql`
 - Created tables:
   - `profiles`
   - `match_stages`
@@ -258,6 +269,13 @@ Remaining build/process notes:
   - `bracket_nodes`
   - `bracket_connections`
   - `admin_logs`
+  - `live_score_cache`
+  - `live_score_sync_logs`
+  - `match_events`
+  - `user_saved_matches`
+  - `user_notification_preferences`
+  - `user_dashboard_stats`
+  - `user_achievements`
 - Enabled RLS on authored tables.
 - Added policies for public match viewing, authenticated user-owned rows, and admin management.
 - Added Supabase browser, server, middleware, env, auth, server action, and database type helpers.
@@ -283,6 +301,20 @@ Remaining build/process notes:
 - Updated result import/manual update validation for live, halftime, finished, extra-time, penalty, winner, live minute, provider, and external match ID fields.
 - Updated match cards and detail pages to show live minute, current score, full-time status, and penalty result metadata.
 - Updated standings, bracket, and prediction scoring logic so only final results (`finished`/`played`) affect progression and scoring.
+
+## Phase 1 user dashboard completed
+
+- Added migration `202606120005_user_dashboard_phase1.sql`.
+- Added profile fields: country, favorite team, preferred language, and last login.
+- Added persisted user tables for saved matches, notification preferences, dashboard stats, and achievements.
+- Added notification support column to `user_favorite_teams`.
+- Added RLS policies and explicit grants for all new user-owned dashboard tables.
+- Added `src/lib/dashboard/service.ts` for dashboard aggregation, profile updates, follow/unfollow actions, notification updates, stat increments, last-login tracking, and achievement calculation.
+- Added `/api/dashboard`, `/api/dashboard/profile`, `/api/dashboard/favorite-teams`, `/api/dashboard/saved-matches`, `/api/dashboard/notifications`, and `/api/dashboard/stats`.
+- Updated `/dashboard` UI to show profile, prediction center, leaderboard rank, followed teams, followed matches, calendar export controls, statistics, notifications, and achievements.
+- Updated sign-in/sign-up/auth callback to persist `last_login_at`.
+- Updated prediction saves and match bookmark actions to use protected server APIs.
+- Added match-detail view tracking and dashboard calendar export tracking.
 
 ## Mock and hardcoded data inventory
 

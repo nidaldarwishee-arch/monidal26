@@ -117,17 +117,11 @@ export function useSavePrediction() {
     if (!supabase) return;
     const { data } = await supabase.auth.getUser();
     if (!data.user) return;
-    await supabase.from("user_predictions").upsert(
-      {
-        user_id: data.user.id,
-        match_n: p.matchN,
-        home_goals: p.homeGoals,
-        away_goals: p.awayGoals,
-        winner_team_id: p.winner ?? null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id,match_n" }
-    );
+    await fetch("/api/predictions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(p),
+    }).catch(() => null);
   }, []);
 }
 

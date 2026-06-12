@@ -7,6 +7,7 @@ import {
   normalizeNextPath,
 } from "@/lib/supabase/auth";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { touchLastLogin } from "@/lib/dashboard/service";
 
 function normalizeLocale(value: FormDataEntryValue | null): "en" | "ar" {
   return value === "ar" ? "ar" : "en";
@@ -42,10 +43,14 @@ export async function signInAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     authRedirect(locale, "/login", { error: "invalid", next });
+  }
+
+  if (data.user) {
+    await touchLastLogin(supabase, data.user.id);
   }
 
   redirect(next);
@@ -84,6 +89,10 @@ export async function signUpAction(formData: FormData) {
 
   if (!data.session) {
     authRedirect(locale, "/login", { message: "verify", next });
+  }
+
+  if (data.user) {
+    await touchLastLogin(supabase, data.user.id);
   }
 
   redirect(next);

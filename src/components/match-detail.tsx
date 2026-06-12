@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, Check, MapPin, Share2 } from "lucide-react";
 import { Link } from "@/i18n/navigation";
@@ -48,6 +48,14 @@ export function MatchDetail({ matchN }: { matchN: number }) {
   const groupMeetings = match.g
     ? MATCHES.filter((m) => m.g === match.g && m.r === "GS" && m.n !== matchN)
     : [];
+
+  useEffect(() => {
+    fetch("/api/dashboard/stats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ field: "matches_viewed", amount: 1 }),
+    }).catch(() => null);
+  }, [matchN]);
 
   const share = async () => {
     const url = window.location.href;
