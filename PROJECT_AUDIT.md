@@ -2,7 +2,7 @@
 
 Audit date: 2026-06-12
 
-Scope: current repository review after adding the Supabase foundation, seed workflow, FIFA import backend, admin tournament APIs, prediction scoring backend, Phase 8 live score sync foundation, and Phase 1 authenticated user dashboard. Validation run: `npm.cmd run typecheck` and `npm.cmd run build`.
+Scope: current repository review after adding the Supabase foundation, seed workflow, FIFA import backend, admin tournament APIs, prediction scoring backend, Phase 8 live score sync foundation, Phase 1 authenticated user dashboard, and Phase 2 super admin dashboard foundation. Validation run: `npm.cmd run typecheck` and `npm.cmd run build`.
 
 ## 1. Existing architecture
 
@@ -20,6 +20,7 @@ Scope: current repository review after adding the Supabase foundation, seed work
   - `actions.ts` contains sign-in, sign-up, and sign-out server actions.
   - `admin.ts` creates a server-side service-role client for admin-only backend work after an admin session check.
   - `database.types.ts` provides typed table contracts for the authored schema.
+- Phase 2 admin backend helpers live in `src/lib/admin/super-dashboard.ts` and aggregate Supabase analytics sessions/events, user profiles, prediction rankings, match state, content articles, presence, and live-score sync logs.
 - Backend services now exist for FIFA imports, admin tournament management, and prediction scoring:
   - `src/lib/fifa/importers/` validates and imports teams, fixtures, and results.
   - `src/lib/admin/tournament.ts` validates and manages teams, venues, matches, and results.
@@ -42,7 +43,7 @@ Scope: current repository review after adding the Supabase foundation, seed work
 - `/register` and `/ar/register`: Supabase email/password registration form.
 - `/auth` and `/ar/auth`: compatibility route that redirects to localized `/login`.
 - `/dashboard` and `/ar/dashboard`: protected dashboard route; unauthenticated users redirect to login with a `next` parameter.
-- `/admin` and `/ar/admin`: existing result entry dashboard; role handling still depends on existing admin code and RLS/API checks.
+- `/admin` and `/ar/admin`: protected super admin dashboard with analytics, user management, prediction analytics, match operations/result entry, content management, and live monitoring.
 - `/auth/callback`: server route for exchanging Supabase auth codes and redirecting to the requested next path.
 
 ## 3. Existing APIs
@@ -79,6 +80,11 @@ Scope: current repository review after adding the Supabase foundation, seed work
 - `PATCH/DELETE /api/admin/matches/[matchN]`: admin match update/delete.
 - `GET/POST /api/admin/results`: admin result listing and bulk upsert.
 - `PATCH/DELETE /api/admin/results/[matchN]`: admin result update/delete.
+- `GET /api/admin/overview`: admin-only super dashboard aggregate for analytics, users, predictions, matches, content, and live monitoring.
+- `GET /api/admin/users`: admin-only user management listing.
+- `PATCH/DELETE /api/admin/users/[id]`: admin-only role/status update and user deletion.
+- `GET/POST /api/admin/content`: admin-only content article listing/create.
+- `PATCH/DELETE /api/admin/content/[id]`: admin-only content article update/delete.
 - `POST /api/admin/sync-fixtures`: admin fixture sync through the configured live score provider.
 - `POST /api/admin/sync-live-scores`: admin live score sync through the configured provider.
 - `POST /api/admin/sync-results`: admin final-result sync plus standings, bracket, and prediction recalculation.
@@ -100,9 +106,10 @@ Important API wiring notes:
 - Match/tournament display: `HomeLive`, `Countdown`, `MatchCard`, `MatchDetail`, `MatchesExplorer`, `GroupTabs`, `GroupTable`, `RoundsExplorer`, `RoundTabs`, `BracketTree`, `TeamLabel`, `TeamFlag`.
 - Calendar: `CalendarExplorer`, `CalendarExportButton`.
 - Map: `MapSection`, `MatchMap`.
-- Auth/user/admin: `AuthForm`, legacy `AuthPanel`, `UserDashboard`, `AdminDashboard`, `AdminResultEditor`, `PredictionForm`.
+- Auth/user/admin: `AuthForm`, legacy `AuthPanel`, `UserDashboard`, super-admin `AdminDashboard`, `AdminResultEditor`, `PredictionForm`.
 - Match display now supports live/halftime badges, current minute, current score, full-time badge, and penalty score display when result metadata exists.
 - `AdminResultEditor` now supports manual live, halftime, and finished status fallback through protected admin API routes.
+- `AdminDashboard` now surfaces Supabase-backed analytics, users, prediction analytics, match operations, content inventory, and live monitoring. Result entry remains available in the matches tab.
 - `UserDashboard` now renders authenticated Supabase profile, prediction center, followed teams, followed matches, calendar export controls, user stats, and achievements.
 
 ## 5. Existing PWA features
@@ -177,10 +184,11 @@ World Cup data caveat:
 - Supabase migrations are authored but not applied from this environment. The Supabase CLI is not installed locally.
 - Supabase seed SQL is generated, but it has not been applied from this environment.
 - The import/live-score architecture exists, but there is still no confirmed official FIFA feed/source, provider key configured in this repo, external match ID mapping, or scheduled ingestion job.
+- Phase 2 analytics tables and APIs are ready, but page-view/session capture instrumentation is not wired across the public UI yet.
+- Phase 2 content management stores articles, but public article/news pages are not implemented yet.
 - User dashboard now hydrates from Supabase, but existing non-dashboard favorite/saved-match UI still uses localStorage as an optimistic layer and should be fully reconciled across all views.
 - Prediction UI now saves through `/api/predictions`; localStorage remains an optimistic mirror for fast client updates.
-- Admin result UI now uses protected backend routes for manual score/status updates, but there is no full admin UI yet for live sync logs, event editing, or external match ID mapping.
-- Admin role management is not implemented.
+- Admin result UI now uses protected backend routes for manual score/status updates, and the super admin dashboard now includes role/status management, content controls, analytics, prediction analytics, and sync status. Event editing and external match ID mapping are still not exposed in the UI.
 - Predictions, maps, and bracket UI were intentionally not expanded in this phase.
 - No tests exist for RLS expectations, API auth, standings, tiebreakers, bracket resolution, third-place allocation, ICS generation, or PWA behavior.
 - No ESLint config exists; `next lint` is deprecated and not CI-safe.
@@ -192,7 +200,8 @@ World Cup data caveat:
 Current validation:
 
 - `npm.cmd run typecheck`: passed.
-- `npm.cmd run build`: passed with `NODE_OPTIONS=--max-old-space-size=4096` after allowing network access for Google Fonts.
+- `npm.cmd run build`: passed with `NODE_OPTIONS=--max-old-space-size=4096`.
+- Local route smoke: `GET http://localhost:3002/admin` returned HTTP 200 from `next dev`.
 
 Resolved blockers in this phase:
 
@@ -208,6 +217,8 @@ Remaining build/process notes:
 
 - Restricted sandbox builds can still fail with `EACCES` while fetching Google Fonts through `next/font`; builds pass when the fonts are cached or network access is allowed.
 - The build can emit a non-fatal Supabase/Edge runtime warning from the middleware import path.
+- Do not run `npm.cmd run typecheck` in parallel with `npm.cmd run build`; Next regenerates `.next/types` during build and can make a concurrent `tsc` process report transient missing generated files.
+- In-app Browser verification was blocked by the browser runtime failing to launch in this Windows sandbox; the route was verified with `Invoke-WebRequest` instead.
 - Lint remains unresolved because the repo has no ESLint config and `next lint` is deprecated.
 
 ## 10. Recommendations
@@ -227,21 +238,25 @@ Remaining build/process notes:
    - Add server-side tests for dashboard profile, follow/unfollow, notification, and stats endpoints.
 
 4. Harden authentication and authorization.
-   - Add admin role management that cannot be self-assigned by users.
+   - Verify admin role/status management against real Supabase Auth users.
    - Decide whether production should fail closed when Supabase env vars are missing.
    - Add tests for protected dashboard, admin checks, and RLS-sensitive flows.
 
-5. Complete PWA assets and behavior.
+5. Wire analytics capture.
+   - Add privacy-conscious page-view/session instrumentation to feed `analytics_sessions`, `analytics_events`, and `user_presence`.
+   - Add GA4/GTM only in the next analytics phase and keep external IDs server/config driven.
+
+6. Complete PWA assets and behavior.
    - Generate `public/icons` assets.
    - Add an offline fallback page.
    - Add push subscription storage and backend delivery before exposing push as a real feature.
 
-6. Improve calendar export.
+7. Improve calendar export.
    - Use resolved matches for team calendar exports.
    - Make ICS URLs locale-aware.
    - Fold ICS lines by octets for Arabic-safe output.
 
-7. Add focused tests and CI checks.
+8. Add focused tests and CI checks.
    - Cover standings, bracket propagation, third-place allocation, ICS output, auth APIs, and Supabase/local data merging.
    - Replace deprecated lint workflow with ESLint CLI plus a checked-in config.
 
@@ -255,6 +270,7 @@ Remaining build/process notes:
   - `202606120003_match_stages_and_seed_integrity.sql`
   - `202606120004_live_score_sync.sql`
   - `202606120005_user_dashboard_phase1.sql`
+  - `202606120006_super_admin_phase2.sql`
 - Created tables:
   - `profiles`
   - `match_stages`
@@ -276,6 +292,10 @@ Remaining build/process notes:
   - `user_notification_preferences`
   - `user_dashboard_stats`
   - `user_achievements`
+  - `analytics_sessions`
+  - `analytics_events`
+  - `content_articles`
+  - `user_presence`
 - Enabled RLS on authored tables.
 - Added policies for public match viewing, authenticated user-owned rows, and admin management.
 - Added Supabase browser, server, middleware, env, auth, server action, and database type helpers.
@@ -316,13 +336,29 @@ Remaining build/process notes:
 - Updated prediction saves and match bookmark actions to use protected server APIs.
 - Added match-detail view tracking and dashboard calendar export tracking.
 
+## Phase 2 super admin dashboard completed
+
+- Added migration `202606120006_super_admin_phase2.sql`.
+- Added profile status management fields: `status`, `suspended_at`, and `suspended_reason`.
+- Added Supabase tables for admin analytics and operations:
+  - `analytics_sessions`
+  - `analytics_events`
+  - `content_articles`
+  - `user_presence`
+- Enabled RLS, explicit grants, public insert-only analytics policies, admin analytics/content policies, and owner/admin presence policies.
+- Added typed database contracts for the Phase 2 tables.
+- Added `src/lib/admin/super-dashboard.ts` for dashboard aggregation, user role/status management, user deletion, content validation/upsert/delete, and admin-safe JSON audit details.
+- Added `/api/admin/overview`, `/api/admin/users`, `/api/admin/users/[id]`, `/api/admin/content`, and `/api/admin/content/[id]`.
+- Upgraded `/admin` into a super admin dashboard with analytics, user management, prediction analytics, match operations/result entry, content management, and live monitoring tabs.
+- Kept predictions, maps, and bracket UI unchanged for this phase.
+
 ## Mock and hardcoded data inventory
 
 Mock/demo runtime data:
 
 - `src/lib/store.ts`: localStorage state under `wc26:v1` for profile, predictions, favorites, saved matches, and local admin results.
 - `src/components/auth-panel.tsx`: legacy local sign-in/demo profile flow remains in the repository.
-- `src/components/admin-dashboard.tsx` and `src/components/admin-result-editor.tsx`: demo/local result entry remains available.
+- `src/components/admin-dashboard.tsx` and `src/components/admin-result-editor.tsx`: super admin shell and demo/local result entry remain available; analytics/content/user data is loaded from Supabase APIs when configured.
 - `src/lib/hooks.ts`: official client results merge `SEED_RESULTS`, Supabase rows, and local demo admin results.
 - `src/components/pwa-install-prompt.tsx`: localStorage dismissal key `wc26:install-dismissed`.
 
@@ -344,6 +380,7 @@ Hardcoded UI/product data:
 - `src/app/manifest.ts`: app metadata, icon paths, and shortcut paths.
 - `public/sw.js`: cache version, precache URLs, and push notification fallback copy.
 - `src/messages/en.json` and `src/messages/ar.json`: static product copy.
+- `src/components/admin-dashboard.tsx`: admin tab labels, dashboard labels, and default content article form values.
 
 Hardcoded configuration and external services:
 

@@ -29,10 +29,13 @@ export interface Database {
           display_name: string | null;
           avatar_url: string | null;
           role: "user" | "admin";
+          status: "active" | "suspended" | "deleted";
           country: string | null;
           favorite_team_id: string | null;
           preferred_language: "en" | "ar";
           last_login_at: Timestamp | null;
+          suspended_at: Timestamp | null;
+          suspended_reason: string | null;
           created_at: Timestamp;
           updated_at: Timestamp;
         };
@@ -42,10 +45,13 @@ export interface Database {
           display_name?: string | null;
           avatar_url?: string | null;
           role?: "user" | "admin";
+          status?: "active" | "suspended" | "deleted";
           country?: string | null;
           favorite_team_id?: string | null;
           preferred_language?: "en" | "ar";
           last_login_at?: Timestamp | null;
+          suspended_at?: Timestamp | null;
+          suspended_reason?: string | null;
           created_at?: Timestamp;
           updated_at?: Timestamp;
         };
@@ -341,6 +347,143 @@ export interface Database {
           created_at?: Timestamp;
         };
         Update: Partial<Database["public"]["Tables"]["admin_logs"]["Insert"]>;
+        Relationships: [];
+      };
+      analytics_sessions: {
+        Row: {
+          id: string;
+          visitor_id: string;
+          user_id: string | null;
+          started_at: Timestamp;
+          last_seen_at: Timestamp;
+          ended_at: Timestamp | null;
+          duration_seconds: number;
+          page_views: number;
+          device_type: string;
+          browser: string;
+          country: string | null;
+          language: string | null;
+          referrer: string | null;
+          entry_path: string | null;
+          exit_path: string | null;
+          bounced: boolean;
+          created_at: Timestamp;
+          updated_at: Timestamp;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["analytics_sessions"]["Row"],
+          | "id"
+          | "started_at"
+          | "last_seen_at"
+          | "ended_at"
+          | "duration_seconds"
+          | "page_views"
+          | "device_type"
+          | "browser"
+          | "bounced"
+          | "created_at"
+          | "updated_at"
+        > & {
+          id?: string;
+          started_at?: Timestamp;
+          last_seen_at?: Timestamp;
+          ended_at?: Timestamp | null;
+          duration_seconds?: number;
+          page_views?: number;
+          device_type?: string;
+          browser?: string;
+          bounced?: boolean;
+          created_at?: Timestamp;
+          updated_at?: Timestamp;
+        };
+        Update: Partial<Database["public"]["Tables"]["analytics_sessions"]["Insert"]>;
+        Relationships: [];
+      };
+      analytics_events: {
+        Row: {
+          id: string;
+          session_id: string | null;
+          visitor_id: string | null;
+          user_id: string | null;
+          event_name: string;
+          path: string | null;
+          metadata: Json | null;
+          device_type: string | null;
+          browser: string | null;
+          country: string | null;
+          language: string | null;
+          created_at: Timestamp;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["analytics_events"]["Row"],
+          "id" | "created_at"
+        > & {
+          id?: string;
+          created_at?: Timestamp;
+        };
+        Update: Partial<Database["public"]["Tables"]["analytics_events"]["Insert"]>;
+        Relationships: [];
+      };
+      content_articles: {
+        Row: {
+          id: string;
+          slug: string;
+          content_type: "news" | "match" | "team" | "stadium";
+          status: "draft" | "published" | "archived";
+          title_en: string;
+          title_ar: string | null;
+          excerpt_en: string | null;
+          excerpt_ar: string | null;
+          body_en: string;
+          body_ar: string | null;
+          match_n: number | null;
+          team_id: string | null;
+          venue_id: string | null;
+          author_id: string | null;
+          published_at: Timestamp | null;
+          created_at: Timestamp;
+          updated_at: Timestamp;
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          content_type: "news" | "match" | "team" | "stadium";
+          status?: "draft" | "published" | "archived";
+          title_en: string;
+          title_ar?: string | null;
+          excerpt_en?: string | null;
+          excerpt_ar?: string | null;
+          body_en: string;
+          body_ar?: string | null;
+          match_n?: number | null;
+          team_id?: string | null;
+          venue_id?: string | null;
+          author_id?: string | null;
+          published_at?: Timestamp | null;
+          created_at?: Timestamp;
+          updated_at?: Timestamp;
+        };
+        Update: Partial<Database["public"]["Tables"]["content_articles"]["Insert"]>;
+        Relationships: [];
+      };
+      user_presence: {
+        Row: {
+          user_id: string;
+          current_path: string | null;
+          last_seen_at: Timestamp;
+          metadata: Json | null;
+          created_at: Timestamp;
+          updated_at: Timestamp;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["user_presence"]["Row"],
+          "last_seen_at" | "created_at" | "updated_at"
+        > & {
+          last_seen_at?: Timestamp;
+          created_at?: Timestamp;
+          updated_at?: Timestamp;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_presence"]["Insert"]>;
         Relationships: [];
       };
       user_predictions: {
