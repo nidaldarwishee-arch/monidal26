@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MATCH_MAP } from "@/data/matches";
 import { getSupabaseServer } from "@/lib/supabase/server";
+import { isFinalResultStatus } from "@/lib/types";
+
+const RESULT_STATUSES = new Set([
+  "live",
+  "halftime",
+  "finished",
+  "played",
+  "postponed",
+  "cancelled",
+]);
 
 /**
  * POST /api/results — admin only.
@@ -35,13 +45,15 @@ export async function POST(req: NextRequest) {
   const homeGoals = Number(body?.homeGoals);
   const awayGoals = Number(body?.awayGoals);
   const winner = typeof body?.winner === "string" ? body.winner : null;
-  const status = body?.status === "live" ? "live" : "played";
+  const status = typeof body?.status === "string" && RESULT_STATUSES.has(body.status)
+    ? body.status
+    : "finished";
 
   const match = MATCH_MAP[matchN];
   if (!match || !Number.isInteger(homeGoals) || !Number.isInteger(awayGoals)) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
-  if (match.r !== "GS" && homeGoals === awayGoals && !winner && status === "played") {
+  if (match.r !== "GS" && homeGoals === awayGoals && !winner && isFinalResultStatus(status)) {
     return NextResponse.json(
       { error: "Knockout draws need a winner (extra time / penalties)" },
       { status: 400 }
@@ -53,10 +65,14 @@ export async function POST(req: NextRequest) {
       match_n: matchN,
       home_goals: homeGoals,
       away_goals: awayGoals,
+      home_score: homeGoals,
+      away_score: awayGoals,
       winner_team_id: winner,
       status,
       official: true,
       updated_by: auth.user.id,
+      live_minute: typeof body?.liveMinute === "number" ? body.liveMinute : null,
+      locked: isFinalResultStatus(status),
       updated_at: new Date().toISOString(),
     },
     { onConflict: "match_n" }

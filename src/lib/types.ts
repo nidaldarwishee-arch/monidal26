@@ -66,7 +66,46 @@ export interface MatchResult {
   awayGoals: number;
   /** Winner after extra time / penalties when draws are impossible (knockout). Team id. */
   winner?: string;
-  status: "played" | "live";
+  status: MatchResultStatus;
+  halftimeHomeGoals?: number | null;
+  halftimeAwayGoals?: number | null;
+  extraTimeHomeGoals?: number | null;
+  extraTimeAwayGoals?: number | null;
+  penaltyHomeGoals?: number | null;
+  penaltyAwayGoals?: number | null;
+  liveMinute?: number | null;
+  lastSyncedAt?: string | null;
+  externalProvider?: string | null;
+  externalMatchId?: string | null;
+}
+
+export type MatchLifecycleStatus =
+  | "scheduled"
+  | "live"
+  | "halftime"
+  | "finished"
+  | "played"
+  | "postponed"
+  | "cancelled";
+
+export type MatchResultStatus = Extract<
+  MatchLifecycleStatus,
+  "live" | "halftime" | "finished" | "played"
+>;
+
+export function isFinalResultStatus(status?: string | null): boolean {
+  return status === "played" || status === "finished";
+}
+
+export function isLiveResultStatus(status?: string | null): boolean {
+  return status === "live" || status === "halftime";
+}
+
+export function normalizeResultStatus(status?: string | null): MatchResultStatus {
+  if (status === "live" || status === "halftime" || status === "finished" || status === "played") {
+    return status;
+  }
+  return "played";
 }
 
 export interface Prediction {

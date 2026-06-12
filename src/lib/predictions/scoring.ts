@@ -1,4 +1,4 @@
-import type { MatchResult, Prediction } from "@/lib/types";
+import { isFinalResultStatus, type MatchResult, type Prediction } from "@/lib/types";
 
 export interface ScoredPrediction {
   prediction: Prediction;
@@ -31,7 +31,7 @@ export function scorePrediction(
   prediction: Prediction,
   result?: MatchResult
 ): ScoredPrediction {
-  if (!result || result.status !== "played") {
+  if (!result || !isFinalResultStatus(result.status)) {
     return {
       prediction,
       result,

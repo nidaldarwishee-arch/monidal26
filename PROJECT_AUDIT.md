@@ -2,7 +2,7 @@
 
 Audit date: 2026-06-12
 
-Scope: current repository review after adding the Supabase foundation, seed workflow, FIFA import backend, admin tournament APIs, and prediction scoring backend. Validation run: `npm.cmd run typecheck` and `npm.cmd run build`.
+Scope: current repository review after adding the Supabase foundation, seed workflow, FIFA import backend, admin tournament APIs, prediction scoring backend, and Phase 8 live score sync foundation. Validation run: `npm.cmd run typecheck` and `npm.cmd run build`.
 
 ## 1. Existing architecture
 
@@ -49,6 +49,8 @@ Scope: current repository review after adding the Supabase foundation, seed work
 
 - `GET /api/matches`: returns resolved matches, with filters for `round`, `group`, `team`, `venue`, and UTC `date`.
 - `GET /api/matches/[n]`: returns one resolved match, bracket progression targets, and feeder matches.
+- `GET /api/matches/[n]/live`: returns one match's current live/result snapshot from Supabase.
+- `GET /api/live-scores`: returns current live/halftime scores from the configured provider cache or Supabase fallback.
 - `GET /api/groups`: returns group IDs with static teams and match numbers.
 - `GET /api/standings`: returns live group standings and best third-place ranking from seeded/database results.
 - `GET /api/bracket`: returns resolved knockout matches and progression connections.
@@ -71,11 +73,19 @@ Scope: current repository review after adding the Supabase foundation, seed work
 - `PATCH/DELETE /api/admin/matches/[matchN]`: admin match update/delete.
 - `GET/POST /api/admin/results`: admin result listing and bulk upsert.
 - `PATCH/DELETE /api/admin/results/[matchN]`: admin result update/delete.
+- `POST /api/admin/sync-fixtures`: admin fixture sync through the configured live score provider.
+- `POST /api/admin/sync-live-scores`: admin live score sync through the configured provider.
+- `POST /api/admin/sync-results`: admin final-result sync plus standings, bracket, and prediction recalculation.
+- `POST /api/admin/recalculate-standings`: recalculates standings and bracket from official final results.
+- `POST /api/admin/recalculate-predictions`: recalculates the prediction leaderboard.
+- `GET /api/admin/sync-status`: returns recent live score sync logs for admins.
+- `GET/POST /api/admin/matches/[matchN]/events`: admin match event listing/create.
+- `PATCH/DELETE /api/admin/matches/[matchN]/events/[eventId]`: admin match event update/delete.
 
 Important API wiring notes:
 
-- Prediction and admin UI still also write directly to Supabase from browser components. The backend APIs exist, but UI write paths are not yet fully centralized through them.
-- Public read APIs still resolve mostly from static data and derived local logic rather than Supabase tables.
+- Prediction UI still writes through the Supabase browser client; admin result writes now go through protected server API routes.
+- Public tournament read APIs still resolve mostly from static data and derived local logic, with Supabase results overlaid.
 
 ## 4. Existing components
 
@@ -85,6 +95,8 @@ Important API wiring notes:
 - Calendar: `CalendarExplorer`, `CalendarExportButton`.
 - Map: `MapSection`, `MatchMap`.
 - Auth/user/admin: `AuthForm`, legacy `AuthPanel`, `UserDashboard`, `AdminDashboard`, `AdminResultEditor`, `PredictionForm`.
+- Match display now supports live/halftime badges, current minute, current score, full-time badge, and penalty score display when result metadata exists.
+- `AdminResultEditor` now supports manual live, halftime, and finished status fallback through protected admin API routes.
 
 ## 5. Existing PWA features
 
@@ -134,20 +146,31 @@ Calendar gaps:
 - Admin result entry updates standings/bracket immediately in demo/local state and can write official results to Supabase when configured.
 - Admin backend APIs now manage teams, venues, matches, and results through server-side validation and audit logging.
 - FIFA import architecture now supports teams, fixtures, and results payloads with structured validation issues.
+- Live score provider abstraction now supports `manual`, `api-football`, `football-data`, and `sportmonks` adapters.
+- Live score sync services now exist for `fetchLiveMatches()`, `fetchMatchResult()`, `syncFixtures()`, `syncLiveScores()`, `syncFinishedResults()`, `updateStandingsAfterResult()`, `updateBracketAfterResult()`, and `recalculatePredictionScores()`.
+- Live/halftime scores are displayed without affecting group standings, bracket progression, or prediction scoring until the result status is final.
 - Interactive map shows venues, per-venue matches, group paths, knockout connections, and team journeys.
 
 World Cup data caveat:
 
-- The repo still treats hardcoded files as the tournament source of truth. There is no verified import pipeline, provenance metadata, validation test, or external sync in this repository yet.
+- The repo still treats hardcoded files as the tournament source of truth. Live score sync architecture now exists, but real production sync still depends on applying migrations, configuring provider keys, mapping external match IDs, and adding a scheduler.
+
+## Phase 8 live score API research
+
+- API-Football (`https://www.api-football.com/`) is the recommended default candidate for the free-tier foundation. Its public material advertises livescore, fixtures, teams, standings, events, lineups, statistics, and predictions, and its free plan lists 100 requests/day with livescore access. The app now supports it through the `api-football` provider and server-only `API_FOOTBALL_KEY`.
+- football-data.org (`https://www.football-data.org/`) is useful for lightweight fixtures, tables, and delayed score data. Its free plan is delayed; live scores are not the best fit for a no-cost production live-score feature. The app supports it through the `football-data` provider and server-only `FOOTBALL_DATA_KEY`.
+- Sportmonks (`https://www.sportmonks.com/football-api/world-cup-api/`) is the richer World Cup/trial/paid fallback, with real-time scores, fixtures, standings, squads, events, and tournament data. The app supports it through the `sportmonks` provider and server-only `SPORTMONKS_API_KEY`.
+- `manual` remains the safest fallback provider when API limits are reached, provider keys are absent, or provider data is missing.
+- Sync strategy implemented in code: provider responses are cached in `live_score_cache`, live sync uses a 55-second cache TTL, fixture sync uses a 24-hour cache TTL, final-result fetches use a 5-minute cache TTL, and every sync writes `live_score_sync_logs`.
 
 ## 8. Missing features
 
 - Supabase migrations are authored but not applied from this environment. The Supabase CLI is not installed locally.
 - Supabase seed SQL is generated, but it has not been applied from this environment.
-- The import architecture exists, but there is still no connector to an official FIFA feed/source or scheduled ingestion job.
+- The import/live-score architecture exists, but there is still no confirmed official FIFA feed/source, provider key configured in this repo, external match ID mapping, or scheduled ingestion job.
 - User favorites, saved matches, and dashboard preferences are not fully hydrated from Supabase after login.
 - Prediction UI still primarily uses localStorage/direct browser writes rather than the new prediction backend endpoints.
-- Admin UI still performs some direct browser writes to `match_results`; it should use the new `/api/admin/results` or `/api/results` backend consistently so role checks and audit logging always run.
+- Admin result UI now uses protected backend routes for manual score/status updates, but there is no full admin UI yet for live sync logs, event editing, or external match ID mapping.
 - Admin role management is not implemented.
 - Predictions, maps, and bracket UI were intentionally not expanded in this phase.
 - No tests exist for RLS expectations, API auth, standings, tiebreakers, bracket resolution, third-place allocation, ICS generation, or PWA behavior.
@@ -160,7 +183,7 @@ World Cup data caveat:
 Current validation:
 
 - `npm.cmd run typecheck`: passed.
-- `npm.cmd run build`: passed with `NODE_OPTIONS=--max-old-space-size=4096`.
+- `npm.cmd run build`: passed with `NODE_OPTIONS=--max-old-space-size=4096` after allowing network access for Google Fonts.
 
 Resolved blockers in this phase:
 
@@ -246,6 +269,20 @@ Remaining build/process notes:
 - Added FIFA import backend for teams, fixtures, and results.
 - Added admin backend APIs for matches, results, teams, and venues.
 - Added prediction backend scoring, per-match prediction updates/deletes, score summaries, and rankings.
+
+## Phase 8 live score foundation completed
+
+- Added migration `202606120004_live_score_sync.sql`.
+- Added live score columns and compatibility status values on `matches` and `match_results`.
+- Added `live_score_cache`, `live_score_sync_logs`, and `match_events` tables with RLS and explicit grants.
+- Added server-only provider adapters for API-Football, football-data.org, Sportmonks, and manual fallback.
+- Added environment placeholders: `LIVE_SCORE_PROVIDER`, `API_FOOTBALL_KEY`, `FOOTBALL_DATA_KEY`, and `SPORTMONKS_API_KEY`.
+- Added backend live-score services for live fetch, single-result fetch, fixture sync, live sync, final result sync, standings recalculation, bracket recalculation, and prediction score recalculation.
+- Added protected admin APIs for sync, recalculation, sync status, and match event fallback management.
+- Added public live-score APIs for current live scores and per-match live snapshots.
+- Updated result import/manual update validation for live, halftime, finished, extra-time, penalty, winner, live minute, provider, and external match ID fields.
+- Updated match cards and detail pages to show live minute, current score, full-time status, and penalty result metadata.
+- Updated standings, bracket, and prediction scoring logic so only final results (`finished`/`played`) affect progression and scoring.
 
 ## Mock and hardcoded data inventory
 

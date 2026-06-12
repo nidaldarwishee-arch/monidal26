@@ -7,6 +7,7 @@ import { Link } from "@/i18n/navigation";
 import { MATCHES } from "@/data/matches";
 import { VENUE_MAP } from "@/data/venues";
 import { nextMatchOf, relatedMatches } from "@/lib/bracket";
+import { isFinalResultStatus, isLiveResultStatus } from "@/lib/types";
 import { formatKickoff, hasKickedOff } from "@/lib/time";
 import { useLocalState } from "@/lib/store";
 import { useResolvedMatches } from "@/lib/use-resolved";
@@ -32,6 +33,15 @@ export function MatchDetail({ matchN }: { matchN: number }) {
   const match = resolved.get(matchN)!;
   const venue = VENUE_MAP[match.v];
   const r = match.result;
+  const live = isLiveResultStatus(r?.status);
+  const finished = isFinalResultStatus(r?.status);
+  const penalty =
+    r?.penaltyHomeGoals !== undefined &&
+    r?.penaltyHomeGoals !== null &&
+    r?.penaltyAwayGoals !== undefined &&
+    r?.penaltyAwayGoals !== null
+      ? `${r.penaltyHomeGoals}:${r.penaltyAwayGoals}`
+      : null;
   const prediction = local.predictions[matchN];
   const { winnerTo, loserTo } = nextMatchOf(matchN);
   const feeders = relatedMatches(match);
@@ -70,13 +80,14 @@ export function MatchDetail({ matchN }: { matchN: number }) {
           <div className="flex flex-wrap items-center justify-center gap-2">
             <Badge variant="muted">{t("matchN", { n: match.n })}</Badge>
             <Badge>{match.g ? t("group", { g: match.g }) : tr(match.r)}</Badge>
-            {r?.status === "live" && (
+            {live && (
               <Badge variant="live">
                 <span className="size-1.5 animate-live rounded-full bg-live" aria-hidden />
                 {t("live")}
+                {typeof r?.liveMinute === "number" ? ` ${r.liveMinute}'` : ""}
               </Badge>
             )}
-            {r?.status === "played" && <Badge variant="muted">{t("fullTime")}</Badge>}
+            {finished && <Badge variant="muted">{t("fullTime")}</Badge>}
           </div>
 
           <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
@@ -113,6 +124,9 @@ export function MatchDetail({ matchN }: { matchN: number }) {
             <p className="mt-3 text-sm font-medium text-primary">
               {slotName(r.winner === match.home.teamId ? match.home : match.away)} ✓
             </p>
+          )}
+          {penalty && (
+            <p className="mt-2 text-sm font-semibold text-muted-foreground">PEN {penalty}</p>
           )}
         </div>
 

@@ -14,8 +14,24 @@ export interface ImportOutcome {
 const GROUP_SET = new Set<string>(GROUPS);
 const ROUND_SET = new Set<string>(ROUND_ORDER);
 const COUNTRY_SET = new Set(["USA", "Canada", "Mexico"]);
-const MATCH_STATUS_SET = new Set(["scheduled", "live", "played", "postponed", "cancelled"]);
-const RESULT_STATUS_SET = new Set(["live", "played"]);
+const MATCH_STATUS_SET = new Set([
+  "scheduled",
+  "live",
+  "halftime",
+  "finished",
+  "played",
+  "postponed",
+  "cancelled",
+]);
+const RESULT_STATUS_SET = new Set([
+  "scheduled",
+  "live",
+  "halftime",
+  "finished",
+  "played",
+  "postponed",
+  "cancelled",
+]);
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -121,16 +137,16 @@ export function validateMatchStatus(
     issues.push({ index, field: "status", message: "Expected a supported match status." });
     return fallback as "scheduled";
   }
-  return status as "scheduled" | "live" | "played" | "postponed" | "cancelled";
+  return status as "scheduled" | "live" | "halftime" | "finished" | "played" | "postponed" | "cancelled";
 }
 
 export function validateResultStatus(value: string | null, index: number, issues: ImportIssue[]) {
   const status = value ?? "played";
   if (!RESULT_STATUS_SET.has(status)) {
-    issues.push({ index, field: "status", message: "Expected live or played." });
+    issues.push({ index, field: "status", message: "Expected a supported result status." });
     return "played" as const;
   }
-  return status as "live" | "played";
+  return status as "scheduled" | "live" | "halftime" | "finished" | "played" | "postponed" | "cancelled";
 }
 
 export function validateGoal(value: number | null, index: number, issues: ImportIssue[], field: string) {

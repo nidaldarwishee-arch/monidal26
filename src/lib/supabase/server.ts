@@ -52,7 +52,9 @@ export async function getOfficialResultsServer() {
   if (supabase) {
     const { data } = await supabase
       .from("match_results")
-      .select("match_n, home_goals, away_goals, winner_team_id, status")
+      .select(
+        "match_n, home_goals, away_goals, winner_team_id, status, halftime_home_score, halftime_away_score, extra_time_home_score, extra_time_away_score, penalty_home_score, penalty_away_score, live_minute, last_synced_at, external_provider, external_match_id"
+      )
       .eq("official", true);
     for (const row of data ?? []) {
       map.set(row.match_n, {
@@ -60,7 +62,17 @@ export async function getOfficialResultsServer() {
         homeGoals: row.home_goals,
         awayGoals: row.away_goals,
         winner: row.winner_team_id ?? undefined,
-        status: row.status === "live" ? "live" : "played",
+        status: row.status === "live" || row.status === "halftime" ? row.status : "finished",
+        halftimeHomeGoals: row.halftime_home_score,
+        halftimeAwayGoals: row.halftime_away_score,
+        extraTimeHomeGoals: row.extra_time_home_score,
+        extraTimeAwayGoals: row.extra_time_away_score,
+        penaltyHomeGoals: row.penalty_home_score,
+        penaltyAwayGoals: row.penalty_away_score,
+        liveMinute: row.live_minute,
+        lastSyncedAt: row.last_synced_at,
+        externalProvider: row.external_provider,
+        externalMatchId: row.external_match_id,
       });
     }
   }

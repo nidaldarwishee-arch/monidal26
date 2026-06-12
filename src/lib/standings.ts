@@ -4,6 +4,7 @@ import type {
   MatchResult,
   StandingRow,
 } from "@/lib/types";
+import { isFinalResultStatus } from "@/lib/types";
 import { MATCHES } from "@/data/matches";
 import { TEAMS } from "@/data/teams";
 
@@ -58,7 +59,7 @@ function sortTallies(tallies: Tally[], groupMatches: Match[], results: ResultsMa
       const mini = new Map(tied.map((t) => [t.teamId, emptyTally(t.teamId)]));
       for (const m of groupMatches) {
         const r = results.get(m.n);
-        if (!r || !ids.has(m.h) || !ids.has(m.a)) continue;
+        if (!r || !isFinalResultStatus(r.status) || !ids.has(m.h) || !ids.has(m.a)) continue;
         applyMatch(mini.get(m.h)!, r.homeGoals, r.awayGoals);
         applyMatch(mini.get(m.a)!, r.awayGoals, r.homeGoals);
       }
@@ -90,7 +91,7 @@ export function computeGroupStandings(
   );
   for (const m of groupMatches) {
     const r = results.get(m.n);
-    if (!r) continue;
+    if (!r || !isFinalResultStatus(r.status)) continue;
     applyMatch(tallies.get(m.h)!, r.homeGoals, r.awayGoals);
     applyMatch(tallies.get(m.a)!, r.awayGoals, r.homeGoals);
   }
@@ -112,7 +113,7 @@ export function computeGroupStandings(
 /** True when all six matches of a group have a result. */
 export function isGroupComplete(group: GroupId, results: ResultsMap): boolean {
   return MATCHES.filter((m) => m.r === "GS" && m.g === group).every((m) =>
-    results.has(m.n)
+    isFinalResultStatus(results.get(m.n)?.status)
   );
 }
 

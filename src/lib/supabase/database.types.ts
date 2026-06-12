@@ -7,6 +7,14 @@ export type Json =
   | Json[];
 
 type Timestamp = string;
+type MatchLifecycleStatus =
+  | "scheduled"
+  | "live"
+  | "halftime"
+  | "finished"
+  | "played"
+  | "postponed"
+  | "cancelled";
 
 export interface Database {
   __InternalSupabase: {
@@ -126,12 +134,23 @@ export interface Database {
           away_slot: string;
           kickoff_at: Timestamp;
           venue_id: string;
-          status: "scheduled" | "live" | "played" | "postponed" | "cancelled";
+          status: MatchLifecycleStatus;
+          live_minute: number | null;
+          last_synced_at: Timestamp | null;
+          external_provider: string | null;
+          external_match_id: string | null;
           created_at: Timestamp;
           updated_at: Timestamp;
         };
-        Insert: Omit<Database["public"]["Tables"]["matches"]["Row"], "created_at" | "updated_at" | "status"> & {
-          status?: "scheduled" | "live" | "played" | "postponed" | "cancelled";
+        Insert: Omit<
+          Database["public"]["Tables"]["matches"]["Row"],
+          "created_at" | "updated_at" | "status" | "live_minute" | "last_synced_at" | "external_provider" | "external_match_id"
+        > & {
+          status?: MatchLifecycleStatus;
+          live_minute?: number | null;
+          last_synced_at?: Timestamp | null;
+          external_provider?: string | null;
+          external_match_id?: string | null;
           created_at?: Timestamp;
           updated_at?: Timestamp;
         };
@@ -143,21 +162,162 @@ export interface Database {
           match_n: number;
           home_goals: number;
           away_goals: number;
+          home_score: number | null;
+          away_score: number | null;
+          halftime_home_score: number | null;
+          halftime_away_score: number | null;
+          extra_time_home_score: number | null;
+          extra_time_away_score: number | null;
+          penalty_home_score: number | null;
+          penalty_away_score: number | null;
           winner_team_id: string | null;
-          status: "live" | "played";
+          status: MatchLifecycleStatus;
           official: boolean;
           updated_by: string | null;
+          live_minute: number | null;
+          last_synced_at: Timestamp | null;
+          external_provider: string | null;
+          external_match_id: string | null;
+          locked: boolean;
           created_at: Timestamp;
           updated_at: Timestamp;
         };
-        Insert: Omit<Database["public"]["Tables"]["match_results"]["Row"], "created_at" | "updated_at" | "status" | "official" | "updated_by"> & {
-          status?: "live" | "played";
+        Insert: Omit<
+          Database["public"]["Tables"]["match_results"]["Row"],
+          | "created_at"
+          | "updated_at"
+          | "status"
+          | "official"
+          | "updated_by"
+          | "home_score"
+          | "away_score"
+          | "halftime_home_score"
+          | "halftime_away_score"
+          | "extra_time_home_score"
+          | "extra_time_away_score"
+          | "penalty_home_score"
+          | "penalty_away_score"
+          | "live_minute"
+          | "last_synced_at"
+          | "external_provider"
+          | "external_match_id"
+          | "locked"
+        > & {
+          status?: MatchLifecycleStatus;
           official?: boolean;
           updated_by?: string | null;
+          home_score?: number | null;
+          away_score?: number | null;
+          halftime_home_score?: number | null;
+          halftime_away_score?: number | null;
+          extra_time_home_score?: number | null;
+          extra_time_away_score?: number | null;
+          penalty_home_score?: number | null;
+          penalty_away_score?: number | null;
+          live_minute?: number | null;
+          last_synced_at?: Timestamp | null;
+          external_provider?: string | null;
+          external_match_id?: string | null;
+          locked?: boolean;
           created_at?: Timestamp;
           updated_at?: Timestamp;
         };
         Update: Partial<Database["public"]["Tables"]["match_results"]["Insert"]>;
+        Relationships: [];
+      };
+      live_score_cache: {
+        Row: {
+          id: string;
+          provider: string;
+          cache_key: string;
+          response: Json;
+          status_code: number | null;
+          error: string | null;
+          fetched_at: Timestamp;
+          expires_at: Timestamp;
+          created_at: Timestamp;
+          updated_at: Timestamp;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["live_score_cache"]["Row"],
+          "id" | "status_code" | "error" | "fetched_at" | "created_at" | "updated_at"
+        > & {
+          id?: string;
+          status_code?: number | null;
+          error?: string | null;
+          fetched_at?: Timestamp;
+          created_at?: Timestamp;
+          updated_at?: Timestamp;
+        };
+        Update: Partial<Database["public"]["Tables"]["live_score_cache"]["Insert"]>;
+        Relationships: [];
+      };
+      live_score_sync_logs: {
+        Row: {
+          id: string;
+          provider: string;
+          sync_type: "fixtures" | "live" | "results" | "standings" | "bracket" | "predictions" | "manual";
+          status: "success" | "error" | "skipped" | "rate_limited";
+          message: string | null;
+          matches_checked: number;
+          matches_updated: number;
+          detail: Json | null;
+          created_by: string | null;
+          started_at: Timestamp;
+          finished_at: Timestamp | null;
+          created_at: Timestamp;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["live_score_sync_logs"]["Row"],
+          "id" | "matches_checked" | "matches_updated" | "started_at" | "finished_at" | "created_at"
+        > & {
+          id?: string;
+          matches_checked?: number;
+          matches_updated?: number;
+          started_at?: Timestamp;
+          finished_at?: Timestamp | null;
+          created_at?: Timestamp;
+        };
+        Update: Partial<Database["public"]["Tables"]["live_score_sync_logs"]["Insert"]>;
+        Relationships: [];
+      };
+      match_events: {
+        Row: {
+          id: string;
+          match_n: number;
+          event_type:
+            | "goal"
+            | "own_goal"
+            | "penalty_goal"
+            | "penalty_miss"
+            | "yellow_card"
+            | "red_card"
+            | "substitution"
+            | "var"
+            | "other";
+          team_id: string | null;
+          player_name: string | null;
+          minute: number | null;
+          extra_minute: number | null;
+          detail: Json | null;
+          source: string;
+          external_event_id: string | null;
+          created_by: string | null;
+          created_at: Timestamp;
+          updated_at: Timestamp;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["match_events"]["Row"],
+          "id" | "source" | "external_event_id" | "created_by" | "created_at" | "updated_at"
+        > & {
+          id?: string;
+          source?: string;
+          external_event_id?: string | null;
+          created_by?: string | null;
+          created_at?: Timestamp;
+          updated_at?: Timestamp;
+        };
+        Update: Partial<Database["public"]["Tables"]["match_events"]["Insert"]>;
         Relationships: [];
       };
       admin_logs: {

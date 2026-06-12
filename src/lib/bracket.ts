@@ -7,7 +7,7 @@ import type {
   SlotPlaceholder,
   StandingRow,
 } from "@/lib/types";
-import { GROUPS } from "@/lib/types";
+import { GROUPS, isFinalResultStatus, normalizeResultStatus } from "@/lib/types";
 import { MATCHES, MATCH_MAP } from "@/data/matches";
 import {
   computeGroupStandings,
@@ -32,7 +32,7 @@ export function parseSlot(slot: string): SlotPlaceholder {
 
 /** Winner team id of a finished match, or undefined. */
 export function matchWinner(m: Match, r: MatchResult | undefined, home?: string, away?: string): string | undefined {
-  if (!r || r.status !== "played") return undefined;
+  if (!r || !isFinalResultStatus(r.status)) return undefined;
   const h = home ?? m.h;
   const a = away ?? m.a;
   if (r.homeGoals > r.awayGoals) return h;
@@ -195,7 +195,7 @@ export function toResultsMap(
       homeGoals: r.homeGoals,
       awayGoals: r.awayGoals,
       winner: r.winner,
-      status: (r.status as MatchResult["status"]) ?? "played",
+      status: normalizeResultStatus(r.status),
     });
   }
   return map;

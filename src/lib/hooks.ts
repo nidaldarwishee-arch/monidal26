@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { MatchResult, Prediction, UserProfile } from "@/lib/types";
+import { isFinalResultStatus } from "@/lib/types";
 import { SEED_RESULTS } from "@/data/results";
 import { getSupabaseBrowser, isSupabaseConfigured } from "@/lib/supabase/client";
 import { store, useLocalState } from "@/lib/store";
@@ -22,7 +23,9 @@ export function useOfficialResults(): ResultsMap {
     let cancelled = false;
     supabase
       .from("match_results")
-      .select("match_n, home_goals, away_goals, winner_team_id, status")
+      .select(
+        "match_n, home_goals, away_goals, winner_team_id, status, halftime_home_score, halftime_away_score, extra_time_home_score, extra_time_away_score, penalty_home_score, penalty_away_score, live_minute, last_synced_at, external_provider, external_match_id"
+      )
       .eq("official", true)
       .then(({ data }) => {
         if (cancelled || !data) return;
@@ -32,7 +35,17 @@ export function useOfficialResults(): ResultsMap {
             homeGoals: row.home_goals,
             awayGoals: row.away_goals,
             winner: row.winner_team_id ?? undefined,
-            status: row.status === "live" ? "live" : "played",
+            status: row.status === "live" || row.status === "halftime" ? row.status : "finished",
+            halftimeHomeGoals: row.halftime_home_score,
+            halftimeAwayGoals: row.halftime_away_score,
+            extraTimeHomeGoals: row.extra_time_home_score,
+            extraTimeAwayGoals: row.extra_time_away_score,
+            penaltyHomeGoals: row.penalty_home_score,
+            penaltyAwayGoals: row.penalty_away_score,
+            liveMinute: row.live_minute,
+            lastSyncedAt: row.last_synced_at,
+            externalProvider: row.external_provider,
+            externalMatchId: row.external_match_id,
           }))
         );
       });
@@ -126,7 +139,7 @@ export function usePredictionScore(predictions: Record<number, Prediction>, resu
     let scored = 0;
     for (const p of Object.values(predictions)) {
       const r = results.get(p.matchN);
-      if (!r || r.status !== "played") continue;
+      if (!r || !isFinalResultStatus(r.status)) continue;
       scored += 1;
       if (r.homeGoals === p.homeGoals && r.awayGoals === p.awayGoals) {
         exact += 1;

@@ -3,7 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { Bookmark, MapPin, Target } from "lucide-react";
 import { Link } from "@/i18n/navigation";
-import type { ResolvedMatch } from "@/lib/types";
+import { isFinalResultStatus, isLiveResultStatus, type ResolvedMatch } from "@/lib/types";
 import { VENUE_MAP } from "@/data/venues";
 import { formatDate, formatTime, hasKickedOff } from "@/lib/time";
 import { cn } from "@/lib/utils";
@@ -22,7 +22,9 @@ function TeamRow({
   const slot = side === "home" ? match.home : match.away;
   const r = match.result;
   const goals = r ? (side === "home" ? r.homeGoals : r.awayGoals) : undefined;
+  const final = isFinalResultStatus(r?.status);
   const winner =
+    final &&
     r &&
     (r.homeGoals !== r.awayGoals
       ? (r.homeGoals > r.awayGoals) === (side === "home")
@@ -62,8 +64,16 @@ export function MatchCard({
   const local = useLocalState();
   const saved = local.saved.includes(match.n);
   const kickedOff = hasKickedOff(match.t);
-  const live = match.result?.status === "live";
-  const finished = match.result?.status === "played";
+  const live = isLiveResultStatus(match.result?.status);
+  const finished = isFinalResultStatus(match.result?.status);
+  const minute = match.result?.liveMinute;
+  const penalty =
+    match.result?.penaltyHomeGoals !== undefined &&
+    match.result?.penaltyHomeGoals !== null &&
+    match.result?.penaltyAwayGoals !== undefined &&
+    match.result?.penaltyAwayGoals !== null
+      ? `${match.result.penaltyHomeGoals}:${match.result.penaltyAwayGoals}`
+      : null;
 
   return (
     <article
@@ -80,6 +90,7 @@ export function MatchCard({
             <Badge variant="live">
               <span className="size-1.5 animate-live rounded-full bg-live" aria-hidden />
               {t("live")}
+              {typeof minute === "number" ? ` ${minute}'` : ""}
             </Badge>
           )}
           {finished && <Badge variant="muted">{t("fullTime")}</Badge>}
@@ -97,6 +108,12 @@ export function MatchCard({
         <TeamRow match={match} side="home" />
         <TeamRow match={match} side="away" />
       </Link>
+
+      {penalty && (
+        <p className="mt-2 text-xs font-semibold text-muted-foreground">
+          PEN {penalty}
+        </p>
+      )}
 
       <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
         <MapPin className="size-3.5 shrink-0" aria-hidden />

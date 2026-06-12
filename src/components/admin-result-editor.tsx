@@ -3,11 +3,10 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Check, Trash2 } from "lucide-react";
-import type { ResolvedMatch } from "@/lib/types";
+import type { MatchResultStatus, ResolvedMatch } from "@/lib/types";
 import { VENUE_MAP } from "@/data/venues";
 import { formatDate, formatTime } from "@/lib/time";
 import { store } from "@/lib/store";
-import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -26,11 +25,16 @@ export function AdminResultEditor({ match }: { match: ResolvedMatch }) {
   const [home, setHome] = useState(existing?.homeGoals ?? 0);
   const [away, setAway] = useState(existing?.awayGoals ?? 0);
   const [winner, setWinner] = useState<string | undefined>(existing?.winner);
+  const [status, setStatus] = useState<MatchResultStatus>(
+    existing?.status === "played" ? "finished" : existing?.status ?? "finished"
+  );
+  const [liveMinute, setLiveMinute] = useState(existing?.liveMinute ?? 0);
   const [saved, setSaved] = useState(false);
 
   const venue = VENUE_MAP[match.v];
   const isKnockout = match.r !== "GS";
-  const needsWinner = isKnockout && home === away;
+  const final = status === "finished" || status === "played";
+  const needsWinner = isKnockout && home === away && final;
   const bothKnown = Boolean(match.home.teamId && match.away.teamId);
 
   const publish = async () => {
@@ -39,35 +43,24 @@ export function AdminResultEditor({ match }: { match: ResolvedMatch }) {
       homeGoals: home,
       awayGoals: away,
       winner: needsWinner ? winner : undefined,
-      status: "played" as const,
+      status,
+      liveMinute: status === "live" || status === "halftime" ? liveMinute : null,
     };
     store.setLocalResult(result);
 
-    const supabase = getSupabaseBrowser();
-    if (supabase) {
-      await supabase.from("match_results").upsert(
-        {
-          match_n: match.n,
-          home_goals: home,
-          away_goals: away,
-          winner_team_id: result.winner ?? null,
-          status: "played",
-          official: true,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "match_n" }
-      );
-    }
+    await fetch(`/api/admin/results/${match.n}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(result),
+    }).catch(() => null);
+
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
   const remove = async () => {
     store.removeLocalResult(match.n);
-    const supabase = getSupabaseBrowser();
-    if (supabase) {
-      await supabase.from("match_results").delete().eq("match_n", match.n);
-    }
+    await fetch(`/api/admin/results/${match.n}`, { method: "DELETE" }).catch(() => null);
   };
 
   return (
@@ -116,6 +109,40 @@ export function AdminResultEditor({ match }: { match: ResolvedMatch }) {
           />
         </div>
         <TeamLabel slot={match.away} flagSize={24} className="text-sm" />
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {(["live", "halftime", "finished"] as const).map((item) => (
+          <button
+            key={item}
+            type="button"
+            aria-pressed={status === item}
+            onClick={() => setStatus(item)}
+            className={cn(
+              "h-9 cursor-pointer rounded-xl border px-3 text-xs font-semibold transition-colors duration-200",
+              status === item ? "border-primary bg-primary/10 text-primary" : "hover:bg-muted"
+            )}
+          >
+            {item === "halftime" ? "HT" : item.toUpperCase()}
+          </button>
+        ))}
+        {(status === "live" || status === "halftime") && (
+          <div>
+            <Label htmlFor={`adm-min-${match.n}`} className="sr-only">
+              Minute
+            </Label>
+            <input
+              id={`adm-min-${match.n}`}
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={130}
+              value={liveMinute}
+              onChange={(e) => setLiveMinute(Math.max(0, Math.min(130, Number(e.target.value) || 0)))}
+              className="h-9 w-16 rounded-xl border bg-background text-center text-sm font-bold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+        )}
       </div>
 
       {needsWinner && bothKnown && (

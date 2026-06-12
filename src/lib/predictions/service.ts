@@ -54,14 +54,14 @@ function toResult(row: {
   home_goals: number;
   away_goals: number;
   winner_team_id: string | null;
-  status: "live" | "played";
+  status: Database["public"]["Tables"]["match_results"]["Row"]["status"];
 }): MatchResult {
   return {
     matchN: row.match_n,
     homeGoals: row.home_goals,
     awayGoals: row.away_goals,
     winner: row.winner_team_id ?? undefined,
-    status: row.status,
+    status: row.status === "live" || row.status === "halftime" ? row.status : "finished",
   };
 }
 
