@@ -40,6 +40,24 @@ through the REST API with the service-role key:
 npm run import:schedule   # reads NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
 ```
 
+## Enable Google sign-in
+
+The login and registration pages include a "Continue with Google" button that
+uses Supabase OAuth. It works once the Google provider is enabled for the
+project:
+
+1. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials),
+   create an OAuth 2.0 Client ID (type: Web application) and add the authorized
+   redirect URI `https://<project-ref>.supabase.co/auth/v1/callback`.
+2. In the Supabase Dashboard, open Authentication → Sign In / Providers →
+   Google, enable it, and paste the Client ID and Client Secret.
+3. In Authentication → URL Configuration, set the Site URL to the production
+   domain and add `http://localhost:3000/auth/callback` (plus the production
+   `/auth/callback`) to the redirect allow list.
+
+Without this configuration the button returns Supabase's
+"provider is not enabled" error.
+
 ## Promote an admin
 
 Admin APIs and the `/admin` dashboard require `profiles.role = 'admin'`.

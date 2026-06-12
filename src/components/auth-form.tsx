@@ -3,6 +3,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { signInAction, signUpAction } from "@/lib/supabase/actions";
 import { localizedPath } from "@/lib/supabase/auth";
+import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -95,6 +96,14 @@ export function AuthForm({
               {isRegister ? t("register") : t("signIn")}
             </Button>
           </form>
+
+          <div className="my-4 flex items-center gap-3 text-xs font-medium text-muted-foreground">
+            <span aria-hidden className="h-px flex-1 bg-border" />
+            {t("orDivider")}
+            <span aria-hidden className="h-px flex-1 bg-border" />
+          </div>
+
+          <GoogleSignInButton next={next} />
 
           <Link
             href={isRegister ? "/login" : "/register"}

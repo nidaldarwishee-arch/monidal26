@@ -157,6 +157,8 @@
     "password": "Password",
     "signIn": "Sign in",
     "register": "Register",
+    "continueWithGoogle": "Continue with Google",
+    "orDivider": "or",
     "magicLink": "Email me a magic link",
     "magicLinkSent": "Check your inbox — your sign-in link is on its way.",
     "verifySent": "Almost there! Confirm your email to activate your account.",

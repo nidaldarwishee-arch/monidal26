@@ -157,6 +157,8 @@
     "password": "كلمة المرور",
     "signIn": "دخول",
     "register": "تسجيل",
+    "continueWithGoogle": "المتابعة باستخدام Google",
+    "orDivider": "أو",
     "magicLink": "أرسل لي رابط دخول سحري",
     "magicLinkSent": "تحقق من بريدك — رابط الدخول في الطريق.",
     "verifySent": "خطوة أخيرة! أكّد بريدك الإلكتروني لتفعيل حسابك.",

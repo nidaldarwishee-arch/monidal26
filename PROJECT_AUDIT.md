@@ -40,8 +40,8 @@ Scope: current repository review after adding the Supabase foundation, seed work
 - `/rounds` and `/ar/rounds`: round explorer, knockout bracket, and predicted bracket toggle.
 - `/map` and `/ar/map`: Leaflet venue map with group path, knockout path, and team journey modes.
 - `/calendar` and `/ar/calendar`: month/list calendar plus ICS export controls.
-- `/login` and `/ar/login`: Supabase email/password sign-in form.
-- `/register` and `/ar/register`: Supabase email/password registration form.
+- `/login` and `/ar/login`: Supabase email/password sign-in form plus a Google OAuth button (requires the Google provider to be enabled in the Supabase dashboard; see `supabase/README.md`).
+- `/register` and `/ar/register`: Supabase email/password registration form plus the same Google OAuth button.
 - `/auth` and `/ar/auth`: compatibility route that redirects to localized `/login`.
 - `/dashboard` and `/ar/dashboard`: protected dashboard route; unauthenticated users redirect to login with a `next` parameter.
 - `/admin` and `/ar/admin`: protected super admin dashboard with analytics, user management, prediction analytics, match operations/result entry, content management, and live monitoring.
@@ -330,7 +330,7 @@ Remaining build/process notes:
 Phase 8 completion (2026-06-12):
 
 - Added `GET/POST /api/cron/sync` with `CRON_SECRET` bearer auth and `task=auto|live|results|fixtures` so live scores, final results, standings, bracket progression, and prediction scoring update automatically without an admin click.
-- Added `vercel.json` cron registrations (daily fixtures and auto sync; Hobby-plan compatible). Minute-level live sync is supported by pointing any external scheduler at `?task=auto`, which is a free no-op outside match windows.
+- Added `vercel.json` cron registrations: fixtures daily and final results every 3 hours (`0 */3 * * *`). The 3-hour results schedule requires a Vercel plan with sub-daily crons; on the Hobby plan, point a free external scheduler (e.g. cron-job.org) at `/api/cron/sync?task=results` with the `Authorization: Bearer ${CRON_SECRET}` header instead. Minute-level live sync is supported the same way via `?task=auto`, which is a free no-op outside match windows.
 - Added `AdminMatchEvents` so admins can manually record and delete match events as the provider-data fallback, completing the manual fallback requirement (score, status, winner, events).
 - Added the `CRON_SECRET` placeholder to `.env.example`.
 
