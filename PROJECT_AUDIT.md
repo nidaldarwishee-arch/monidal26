@@ -2,7 +2,7 @@
 
 Audit date: 2026-06-12
 
-Scope: current repository review after adding the Supabase foundation, seed workflow, FIFA import backend, admin tournament APIs, prediction scoring backend, Phase 8 live score sync foundation, Phase 1 authenticated user dashboard, Phase 2 super admin dashboard foundation, Phase 3 analytics capture, and Phase 4 cinematic hero visuals. Validation run: `npm.cmd run typecheck` and `npm.cmd run build`.
+Scope: current repository review after adding the Supabase foundation, seed workflow, FIFA import backend, admin tournament APIs, prediction scoring backend, Phase 8 live score sync foundation, Phase 1 authenticated user dashboard, Phase 2 super admin dashboard foundation, Phase 3 analytics capture, Phase 4 cinematic hero visuals, and Phase 5 favicon/PWA icons. Validation run: `npm.cmd run typecheck` and `npm.cmd run build`.
 
 ## 1. Existing architecture
 
@@ -118,14 +118,15 @@ Important API wiring notes:
 
 - `src/app/manifest.ts` defines app metadata, standalone display, theme/background colors, icon references, and shortcuts.
 - `src/app/[locale]/layout.tsx` adds manifest metadata, Apple web app settings, theme colors, and icon metadata.
+- `public/favicon.svg` and `public/icons/*.png` now provide browser favicon, Apple touch, standard PWA, and maskable PWA assets.
+- `scripts/generate-icons.mjs` now generates the icon set used by the manifest and metadata.
 - `public/sw.js` includes precache, network-first handling for pages/APIs, cache-first handling for static assets/icons/flags/map tiles, network-only handling for ICS downloads, cache cleanup, push notification handling, and notification click handling.
 - `ServiceWorkerRegister` registers `/sw.js` in production.
 - `PWAInstallPrompt` listens for `beforeinstallprompt` and stores dismissal in localStorage.
 
 PWA gaps:
 
-- `public/icons` still does not exist, but manifest and metadata reference icon files there.
-- `package.json` still references missing icon and schedule-import scripts.
+- `package.json` still references a missing schedule-import script.
 - No offline page exists.
 - Push handlers exist, but there is no subscription UI, push backend, VAPID setup, or notification preferences.
 - Manifest shortcuts are default-route/English only.
@@ -195,7 +196,7 @@ World Cup data caveat:
 - Predictions, maps, and bracket UI were intentionally not expanded in this phase.
 - No tests exist for RLS expectations, API auth, standings, tiebreakers, bracket resolution, third-place allocation, ICS generation, or PWA behavior.
 - No ESLint config exists; `next lint` is deprecated and not CI-safe.
-- Missing referenced package scripts remain: `scripts/generate-icons.mjs` and `scripts/import-schedule.mjs`.
+- Missing referenced package script remains: `scripts/import-schedule.mjs`.
 - Demo/local mode is still available when Supabase env vars are absent. Production should fail closed or clearly disable write/admin flows.
 
 ## 9. Build errors
@@ -251,7 +252,6 @@ Remaining build/process notes:
    - Add admin dashboard filters for date range, locale, device, and country.
 
 6. Complete PWA assets and behavior.
-   - Generate `public/icons` assets.
    - Add an offline fallback page.
    - Add push subscription storage and backend delivery before exposing push as a real feature.
 
@@ -375,6 +375,19 @@ Remaining build/process notes:
 - Updated the localized home page hero to place the legend scene between the headline and quick navigation.
 - Kept the implementation asset-light and code-native; no external player photos or API calls were added.
 
+## Phase 5 favicon and PWA icons completed
+
+- Added `scripts/generate-icons.mjs`.
+- Generated:
+  - `public/favicon.svg`
+  - `public/icons/favicon-32.png`
+  - `public/icons/icon-192.png`
+  - `public/icons/icon-512.png`
+  - `public/icons/icon-512-maskable.png`
+  - `public/icons/apple-touch-icon.png`
+- Updated localized layout metadata to include SVG favicon and 32px PNG favicon entries.
+- The existing manifest icon paths now resolve to real files.
+
 ## Mock and hardcoded data inventory
 
 Mock/demo runtime data:
@@ -401,6 +414,7 @@ Hardcoded UI/product data:
 - `src/components/calendar-explorer.tsx`: year/month assumptions for June and July 2026.
 - `src/components/match-map.tsx`: default map mode/group/team, map center/zoom, country label map, marker letters, and CARTO tile URLs.
 - `src/app/manifest.ts`: app metadata, icon paths, and shortcut paths.
+- `scripts/generate-icons.mjs`: hardcoded icon colors, ball geometry, and "26" digit drawing.
 - `public/sw.js`: cache version, precache URLs, and push notification fallback copy.
 - `src/messages/en.json` and `src/messages/ar.json`: static product copy.
 - `src/components/admin-dashboard.tsx`: admin tab labels, dashboard labels, and default content article form values.
