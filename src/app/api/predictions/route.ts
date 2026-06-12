@@ -1,83 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import { MATCH_MAP } from "@/data/matches";
-import { hasKickedOff } from "@/lib/time";
-import { getSupabaseServer } from "@/lib/supabase/server";
+import { jsonError } from "@/lib/api/admin";
+import { requirePredictionUser } from "@/lib/api/predictions";
+import {
+  getUserPredictionScore,
+  listUserPredictions,
+  saveUserPrediction,
+} from "@/lib/predictions/service";
 
-/** GET /api/predictions — the signed-in user's predictions. */
+/** GET /api/predictions - the signed-in user's predictions and score. */
 export async function GET() {
-  const supabase = await getSupabaseServer();
-  if (!supabase) {
-    return NextResponse.json(
-      { error: "Supabase is not configured. Demo mode stores predictions in the browser." },
-      { status: 501 }
-    );
+  const context = await requirePredictionUser();
+  if (!context.ok) return context.response;
+
+  try {
+    const [predictions, score] = await Promise.all([
+      listUserPredictions(context.supabase, context.user.id),
+      getUserPredictionScore(context.supabase, context.user.id),
+    ]);
+
+    return NextResponse.json({ predictions, score: score.summary });
+  } catch (error) {
+    return jsonError(error instanceof Error ? error.message : "Failed to load predictions.", 500);
   }
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
-  const { data, error } = await supabase
-    .from("user_predictions")
-    .select("match_n, home_goals, away_goals, winner_team_id, updated_at")
-    .eq("user_id", auth.user.id)
-    .order("match_n");
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-  return NextResponse.json({ predictions: data });
 }
 
 /**
  * POST /api/predictions
  * Body: { matchN, homeGoals, awayGoals, winner? }
- * Editing closes at kickoff (also enforced by RLS).
  */
 export async function POST(req: NextRequest) {
-  const supabase = await getSupabaseServer();
-  if (!supabase) {
-    return NextResponse.json(
-      { error: "Supabase is not configured. Demo mode stores predictions in the browser." },
-      { status: 501 }
-    );
-  }
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
+  const context = await requirePredictionUser();
+  if (!context.ok) return context.response;
 
   const body = await req.json().catch(() => null);
-  const matchN = Number(body?.matchN);
-  const homeGoals = Number(body?.homeGoals);
-  const awayGoals = Number(body?.awayGoals);
-  const winner = typeof body?.winner === "string" ? body.winner : null;
 
-  const match = MATCH_MAP[matchN];
-  if (!match || !Number.isInteger(homeGoals) || !Number.isInteger(awayGoals)) {
-    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+  try {
+    const result = await saveUserPrediction(context.supabase, context.user.id, body);
+    if (result.issues.length) return NextResponse.json(result, { status: 400 });
+    return NextResponse.json({ prediction: result.prediction });
+  } catch (error) {
+    return jsonError(error instanceof Error ? error.message : "Failed to save prediction.", 500);
   }
-  if (homeGoals < 0 || homeGoals > 20 || awayGoals < 0 || awayGoals > 20) {
-    return NextResponse.json({ error: "Goals out of range" }, { status: 400 });
-  }
-  if (hasKickedOff(match.t)) {
-    return NextResponse.json(
-      { error: "Predictions are locked at kickoff" },
-      { status: 403 }
-    );
-  }
-
-  const { error } = await supabase.from("user_predictions").upsert(
-    {
-      user_id: auth.user.id,
-      match_n: matchN,
-      home_goals: homeGoals,
-      away_goals: awayGoals,
-      winner_team_id: winner,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id,match_n" }
-  );
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-  return NextResponse.json({ ok: true });
 }
