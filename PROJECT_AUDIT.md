@@ -2,7 +2,7 @@
 
 Audit date: 2026-06-12
 
-Scope: current repository review after adding the Supabase foundation, seed workflow, FIFA import backend, admin tournament APIs, prediction scoring backend, Phase 8 live score sync foundation, Phase 1 authenticated user dashboard, Phase 2 super admin dashboard foundation, Phase 3 analytics capture, Phase 4 cinematic hero visuals, Phase 5 favicon/PWA icons, and Phase 6 platform hardening (offline page, ICS fixes, ESLint, schedule import script, one-paste DB setup, live Supabase environment verification). Validation run: `npm.cmd run typecheck`, `npm.cmd run lint`, and `npm.cmd run build`.
+Scope: current repository review after adding the Supabase foundation, seed workflow, FIFA import backend, admin tournament APIs, prediction scoring backend, Phase 8 live score sync foundation and completion (cron scheduling, admin event editing), Phase 1 authenticated user dashboard, Phase 2 super admin dashboard foundation, Phase 3 analytics capture, Phase 4 cinematic hero visuals, Phase 5 favicon/PWA icons, and Phase 6 platform hardening (offline page, ICS fixes, ESLint, schedule import script, one-paste DB setup, live Supabase environment verification). Validation run: `npm.cmd run typecheck`, `npm.cmd run lint`, and `npm.cmd run build`.
 
 ## 1. Existing architecture
 
@@ -93,6 +93,7 @@ Scope: current repository review after adding the Supabase foundation, seed work
 - `POST /api/admin/recalculate-standings`: recalculates standings and bracket from official final results.
 - `POST /api/admin/recalculate-predictions`: recalculates the prediction leaderboard.
 - `GET /api/admin/sync-status`: returns recent live score sync logs for admins.
+- `GET/POST /api/cron/sync`: scheduler-driven sync (`task=auto|live|results|fixtures`) authorized with `Authorization: Bearer ${CRON_SECRET}`; `auto` is a database/provider no-op outside match windows and only recalculates standings/bracket/predictions when a final result changed.
 - `GET/POST /api/admin/matches/[matchN]/events`: admin match event listing/create.
 - `PATCH/DELETE /api/admin/matches/[matchN]/events/[eventId]`: admin match event update/delete.
 
@@ -111,6 +112,7 @@ Important API wiring notes:
 - Auth/user/admin: `AuthForm`, legacy `AuthPanel`, `UserDashboard`, super-admin `AdminDashboard`, `AdminResultEditor`, `PredictionForm`.
 - Match display now supports live/halftime badges, current minute, current score, full-time badge, and penalty score display when result metadata exists.
 - `AdminResultEditor` now supports manual live, halftime, and finished status fallback through protected admin API routes.
+- `AdminMatchEvents` (collapsible inside each `AdminResultEditor`) lists, adds, and deletes manual match events (goals, cards, substitutions, VAR) through the protected admin events API.
 - `AdminDashboard` now surfaces Supabase-backed analytics, users, prediction analytics, match operations, content inventory, and live monitoring. Result entry remains available in the matches tab.
 - `UserDashboard` now renders authenticated Supabase profile, prediction center, followed teams, followed matches, calendar export controls, user stats, and achievements.
 
@@ -183,18 +185,19 @@ World Cup data caveat:
 - Sportmonks (`https://www.sportmonks.com/football-api/world-cup-api/`) is the richer World Cup/trial/paid fallback, with real-time scores, fixtures, standings, squads, events, and tournament data. The app supports it through the `sportmonks` provider and server-only `SPORTMONKS_API_KEY`.
 - `manual` remains the safest fallback provider when API limits are reached, provider keys are absent, or provider data is missing.
 - Sync strategy implemented in code: provider responses are cached in `live_score_cache`, live sync uses a 55-second cache TTL, fixture sync uses a 24-hour cache TTL, final-result fetches use a 5-minute cache TTL, and every sync writes `live_score_sync_logs`.
+- Automatic scheduling implemented: `GET/POST /api/cron/sync` (CRON_SECRET bearer auth) with `task=auto|live|results|fixtures`; `vercel.json` registers daily fixtures and auto crons. The 55-second cache TTL means even a one-minute external scheduler stays within free-tier provider limits, and `task=auto` performs no provider or database work outside kickoff windows (kickoff −10 min to +3.5 h).
 
 ## 8. Missing features
 
 - Supabase migrations and seed are authored but still not applied to a live project. Verified on 2026-06-12 against the configured project (`NEXT_PUBLIC_SUPABASE_URL`): the auth endpoint is healthy and the publishable key is valid, but the database has no application tables (`PGRST205`), and the configured `SUPABASE_SERVICE_ROLE_KEY` is rejected with HTTP 401 (invalid or revoked secret key).
 - The configured project does not belong to the Supabase account connected to this workspace, and that account's free plan already has two active projects, so a replacement project could not be created from here. Provisioning needs a one-time owner decision (see recommendations). `npm run db:setup-sql` now produces a one-paste setup bundle for whichever project is chosen.
-- The import/live-score architecture exists, but there is still no confirmed official FIFA feed/source, provider key configured in this repo, external match ID mapping, or scheduled ingestion job.
+- The import/live-score architecture exists, but there is still no confirmed official FIFA feed/source, provider key configured in this repo, or external match ID mapping. Scheduling now exists via `/api/cron/sync` plus `vercel.json` crons (fixtures daily, auto once daily on the Hobby plan); minute-level live sync still requires an external scheduler (e.g. cron-job.org) or Vercel Pro cron calling `?task=auto`.
 - Phase 3 basic page-view, session heartbeat, and presence capture is wired, but richer product-event capture is not yet connected to every interaction.
 - Optional GA4/GTM IDs are supported, but no real measurement/container ID is configured in the repository.
 - Phase 2 content management stores articles, but public article/news pages are not implemented yet.
 - User dashboard now hydrates from Supabase, but existing non-dashboard favorite/saved-match UI still uses localStorage as an optimistic layer and should be fully reconciled across all views.
 - Prediction UI now saves through `/api/predictions`; localStorage remains an optimistic mirror for fast client updates.
-- Admin result UI now uses protected backend routes for manual score/status updates, and the super admin dashboard now includes role/status management, content controls, analytics, prediction analytics, and sync status. Event editing and external match ID mapping are still not exposed in the UI.
+- Admin result UI now uses protected backend routes for manual score/status updates, and the super admin dashboard now includes role/status management, content controls, analytics, prediction analytics, sync status, and per-match event editing. External match ID mapping is still not exposed in the UI.
 - Predictions, maps, and bracket UI were intentionally not expanded in this phase.
 - No tests exist for RLS expectations, API auth, standings, tiebreakers, bracket resolution, third-place allocation, ICS generation, or PWA behavior.
 - Demo/local mode is still available when Supabase env vars are absent. Production should fail closed or clearly disable write/admin flows.
@@ -323,6 +326,13 @@ Remaining build/process notes:
 - Updated result import/manual update validation for live, halftime, finished, extra-time, penalty, winner, live minute, provider, and external match ID fields.
 - Updated match cards and detail pages to show live minute, current score, full-time status, and penalty result metadata.
 - Updated standings, bracket, and prediction scoring logic so only final results (`finished`/`played`) affect progression and scoring.
+
+Phase 8 completion (2026-06-12):
+
+- Added `GET/POST /api/cron/sync` with `CRON_SECRET` bearer auth and `task=auto|live|results|fixtures` so live scores, final results, standings, bracket progression, and prediction scoring update automatically without an admin click.
+- Added `vercel.json` cron registrations (daily fixtures and auto sync; Hobby-plan compatible). Minute-level live sync is supported by pointing any external scheduler at `?task=auto`, which is a free no-op outside match windows.
+- Added `AdminMatchEvents` so admins can manually record and delete match events as the provider-data fallback, completing the manual fallback requirement (score, status, winner, events).
+- Added the `CRON_SECRET` placeholder to `.env.example`.
 
 ## Phase 1 user dashboard completed
 
