@@ -11,7 +11,7 @@
  * result updates, favorite-team alerts and knockout qualification news.
  */
 
-const VERSION = "wc26-v1";
+const VERSION = "wc26-v2";
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const IMAGE_CACHE = `${VERSION}-images`;
@@ -22,8 +22,10 @@ const PRECACHE_URLS = [
   "/groups",
   "/rounds",
   "/calendar",
+  "/offline",
   "/ar",
   "/ar/matches",
+  "/ar/offline",
   "/api/matches",
   "/manifest.webmanifest",
 ];
@@ -103,7 +105,13 @@ async function networkFirst(request) {
     const shell = await caches.open(SHELL_CACHE);
     const shellMatch = await shell.match(request);
     if (shellMatch) return shellMatch;
-    // last resort: the cached home page
+    // last resort for page navigations: the locale-matching offline page
+    if (request.mode === "navigate") {
+      const { pathname } = new URL(request.url);
+      const isArabic = pathname === "/ar" || pathname.startsWith("/ar/");
+      const offline = await shell.match(isArabic ? "/ar/offline" : "/offline");
+      if (offline) return offline;
+    }
     return (await shell.match("/")) ?? Response.error();
   }
 }

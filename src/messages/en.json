@@ -226,6 +226,12 @@
     "dismiss": "Not now",
     "offline": "You're offline — showing the saved schedule."
   },
+  "offline": {
+    "title": "You're offline",
+    "subtitle": "This page isn't saved for offline use yet. Pages you've already visited stay available without a connection.",
+    "schedule": "Open the saved schedule",
+    "retry": "Try again"
+  },
   "common": {
     "loading": "Loading…",
     "save": "Save",
