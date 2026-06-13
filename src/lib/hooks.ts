@@ -73,32 +73,32 @@ export function useUser() {
     if (!supabase) return;
 
     const load = async () => {
-      // --- [TEMP DEBUG] Remove after confirming auth works ---
-      const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
-      console.log("[useUser] getSession:", sessionData.session ? `exp=${sessionData.session.expires_at}` : "null", sessionErr?.message ?? "");
-
-      const { data, error: userErr } = await supabase.auth.getUser();
-      console.log("[useUser] getUser:", data.user ? `uid=${data.user.id}` : "null", userErr?.message ?? "");
-      // --- [END TEMP DEBUG] ---
-
-      if (!data.user) {
+      try {
+        // getSession reads from cookies — no network call for valid tokens.
+        // getUser() forces a server round-trip on every render and can hang.
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          setSupabaseProfile(null);
+          setLoading(false);
+          return;
+        }
+        const user = session.user;
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("display_name, role")
+          .eq("id", user.id)
+          .single();
+        setSupabaseProfile({
+          id: user.id,
+          name: profile?.display_name ?? user.email ?? "User",
+          email: user.email ?? "",
+          role: profile?.role === "admin" ? "admin" : "user",
+        });
+      } catch {
         setSupabaseProfile(null);
+      } finally {
         setLoading(false);
-        return;
       }
-      const { data: profile, error: profileErr } = await supabase
-        .from("profiles")
-        .select("display_name, role")
-        .eq("id", data.user.id)
-        .single();
-      console.log("[useUser] profile:", profile ? `name="${profile.display_name}" role=${profile.role}` : "null", profileErr?.message ?? "");
-      setSupabaseProfile({
-        id: data.user.id,
-        name: profile?.display_name ?? data.user.email ?? "User",
-        email: data.user.email ?? "",
-        role: profile?.role === "admin" ? "admin" : "user",
-      });
-      setLoading(false);
     };
 
     load();
