@@ -234,16 +234,24 @@ export function UserDashboard() {
     }
   };
 
+  // Analytics: track on mount/unmount regardless of auth state.
   useEffect(() => {
-    loadDashboard();
     track("pages_viewed");
     const startedAt = Date.now();
     return () => {
       const seconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
       track("time_spent_seconds", seconds);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Dashboard data: only fetch once the authenticated user is confirmed.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!user) return;
+    loadDashboard();
+  // user.id is stable; using the object reference would cause infinite loops.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const savedSet = useMemo(
     () => new Set(dashboard?.savedMatches.map((match) => match.match_n) ?? []),
