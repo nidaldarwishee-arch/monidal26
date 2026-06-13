@@ -70,40 +70,49 @@ export function useUser() {
 
   useEffect(() => {
     const supabase = getSupabaseBrowser();
-    if (!supabase) return;
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
 
-    const load = async () => {
-      try {
-        // getSession reads from cookies — no network call for valid tokens.
-        // getUser() forces a server round-trip on every render and can hang.
-        const { data: { session } } = await supabase.auth.getSession();
+    // onAuthStateChange fires synchronously with the cached session from
+    // storage (INITIAL_SESSION event) — no network call, so it cannot hang.
+    // getSession/getUser both try to refresh an expired token over the network
+    // and silently hang when the Supabase auth server is slow or unreachable.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
         if (!session?.user) {
           setSupabaseProfile(null);
           setLoading(false);
           return;
         }
         const user = session.user;
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("display_name, role")
-          .eq("id", user.id)
-          .single();
-        setSupabaseProfile({
-          id: user.id,
-          name: profile?.display_name ?? user.email ?? "User",
-          email: user.email ?? "",
-          role: profile?.role === "admin" ? "admin" : "user",
-        });
-      } catch {
-        setSupabaseProfile(null);
-      } finally {
-        setLoading(false);
+        try {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name, role")
+            .eq("id", user.id)
+            .single();
+          setSupabaseProfile({
+            id: user.id,
+            name: profile?.display_name ?? user.email ?? "User",
+            email: user.email ?? "",
+            role: profile?.role === "admin" ? "admin" : "user",
+          });
+        } catch {
+          setSupabaseProfile({
+            id: user.id,
+            name: user.email ?? "User",
+            email: user.email ?? "",
+            role: "user",
+          });
+        } finally {
+          setLoading(false);
+        }
       }
-    };
+    );
 
-    load();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => load());
-    return () => sub.subscription.unsubscribe();
+    return () => subscription.unsubscribe();
   }, []);
 
   const user = isSupabaseConfigured() ? supabaseProfile : local.profile;
