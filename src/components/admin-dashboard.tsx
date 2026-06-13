@@ -7,6 +7,7 @@ import {
   BarChart3,
   CalendarClock,
   CircleAlert,
+  Crown,
   Database,
   FileText,
   Gauge,
@@ -472,6 +473,32 @@ function AnalyticsTab({ dashboard }: { dashboard: SuperAdminDashboardData }) {
   );
 }
 
+const OWNER_EMAIL = "nidaldarwishe@gmail.com";
+
+function RoleBadge({ email, role }: { email: string | null; role: string }) {
+  if (email === OWNER_EMAIL) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+        <Crown className="size-3" aria-hidden />
+        Owner
+      </span>
+    );
+  }
+  if (role === "admin") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">
+        <ShieldCheck className="size-3" aria-hidden />
+        Admin
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+      User
+    </span>
+  );
+}
+
 function UsersTab({
   summary,
   busyKey,
@@ -483,7 +510,6 @@ function UsersTab({
   onPatch: (id: string, payload: Record<string, unknown>, key: string) => void;
   onDelete: (id: string) => void;
 }) {
-  // Show newest registrations first
   const sorted = [...summary.rows].sort(
     (a, b) => new Date(b.registrationDate).getTime() - new Date(a.registrationDate).getTime()
   );
@@ -513,62 +539,74 @@ function UsersTab({
               </tr>
             </thead>
             <tbody className="divide-y">
-              {sorted.map((item) => (
-                <tr key={item.id} className="hover:bg-muted/40">
-                  <td className="px-3 py-3 font-semibold">{item.name || "—"}</td>
-                  <td className="px-3 py-3 text-muted-foreground">{item.email ?? item.id}</td>
-                  <td className="px-3 py-3">
-                    <StatusBadge status={item.role} />
-                  </td>
-                  <td className="px-3 py-3">
-                    <StatusBadge status={item.status} />
-                  </td>
-                  <td className="px-3 py-3">
-                    <span className="font-semibold">{item.predictionScore}</span>
-                    {item.rank && <span className="ms-2 text-xs text-muted-foreground">#{item.rank}</span>}
-                  </td>
-                  <td className="px-3 py-3 text-muted-foreground">{formatDateTime(item.registrationDate)}</td>
-                  <td className="px-3 py-3 text-muted-foreground">{formatDateTime(item.lastLogin)}</td>
-                  <td className="px-3 py-3">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={busyKey === `user:role:${item.id}`}
-                        onClick={() =>
-                          onPatch(item.id, { role: item.role === "admin" ? "user" : "admin" }, `user:role:${item.id}`)
-                        }
-                      >
-                        <ShieldCheck aria-hidden />
-                        {item.role === "admin" ? "Demote" : "Admin"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={item.status === "suspended" ? "secondary" : "outline"}
-                        disabled={busyKey === `user:status:${item.id}`}
-                        onClick={() =>
-                          onPatch(
-                            item.id,
-                            { status: item.status === "suspended" ? "active" : "suspended" },
-                            `user:status:${item.id}`
-                          )
-                        }
-                      >
-                        <UserCheck aria-hidden />
-                        {item.status === "suspended" ? "Activate" : "Suspend"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        disabled={busyKey === `user:delete:${item.id}`}
-                        onClick={() => onDelete(item.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {sorted.map((item) => {
+                const isOwner = item.email === OWNER_EMAIL;
+                return (
+                  <tr key={item.id} className={cn("hover:bg-muted/40", isOwner && "bg-amber-50/60 dark:bg-amber-900/10")}>
+                    <td className="px-3 py-3 font-semibold">{item.name || "—"}</td>
+                    <td className="px-3 py-3 text-muted-foreground">{item.email ?? item.id}</td>
+                    <td className="px-3 py-3">
+                      <RoleBadge email={item.email} role={item.role} />
+                    </td>
+                    <td className="px-3 py-3">
+                      <StatusBadge status={item.status} />
+                    </td>
+                    <td className="px-3 py-3">
+                      <span className="font-semibold">{item.predictionScore}</span>
+                      {item.rank && <span className="ms-2 text-xs text-muted-foreground">#{item.rank}</span>}
+                    </td>
+                    <td className="px-3 py-3 text-muted-foreground">{formatDateTime(item.registrationDate)}</td>
+                    <td className="px-3 py-3 text-muted-foreground">{formatDateTime(item.lastLogin)}</td>
+                    <td className="px-3 py-3">
+                      {isOwner ? (
+                        <div className="flex justify-end">
+                          <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
+                            <Crown className="size-3" aria-hidden />
+                            Protected — site owner
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={busyKey === `user:role:${item.id}`}
+                            onClick={() =>
+                              onPatch(item.id, { role: item.role === "admin" ? "user" : "admin" }, `user:role:${item.id}`)
+                            }
+                          >
+                            <ShieldCheck aria-hidden />
+                            {item.role === "admin" ? "Demote to User" : "Make Admin"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={item.status === "suspended" ? "secondary" : "outline"}
+                            disabled={busyKey === `user:status:${item.id}`}
+                            onClick={() =>
+                              onPatch(
+                                item.id,
+                                { status: item.status === "suspended" ? "active" : "suspended" },
+                                `user:status:${item.id}`
+                              )
+                            }
+                          >
+                            <UserCheck aria-hidden />
+                            {item.status === "suspended" ? "Activate" : "Suspend"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            disabled={busyKey === `user:delete:${item.id}`}
+                            onClick={() => onDelete(item.id)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           {!summary.rows.length && (
