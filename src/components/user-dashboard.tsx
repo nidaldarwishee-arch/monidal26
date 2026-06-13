@@ -219,8 +219,15 @@ export function UserDashboard() {
   const loadDashboard = async () => {
     setLoadError(false);
     try {
-      const response = await fetch("/api/dashboard", { cache: "no-store" });
-      if (!response.ok) throw new Error(`Dashboard request failed (${response.status}).`);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 20_000);
+      const response = await fetch("/api/dashboard", { cache: "no-store", signal: controller.signal });
+      clearTimeout(timeout);
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        console.error(`[Dashboard] /api/dashboard → ${response.status}`, body);
+        throw new Error(`Dashboard request failed (${response.status}).`);
+      }
       const payload = (await response.json()) as { dashboard: DashboardData };
       setDashboard(payload.dashboard);
       setProfileDraft({
@@ -229,7 +236,8 @@ export function UserDashboard() {
         favoriteTeamId: payload.dashboard.profile.favorite_team_id ?? "",
         preferredLanguage: payload.dashboard.profile.preferred_language ?? (locale === "ar" ? "ar" : "en"),
       });
-    } catch {
+    } catch (err) {
+      console.error("[Dashboard] loadDashboard failed:", err instanceof Error ? err.message : String(err));
       setLoadError(true);
     }
   };
@@ -245,7 +253,6 @@ export function UserDashboard() {
   }, []);
 
   // Dashboard data: only fetch once the authenticated user is confirmed.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!user) return;
     loadDashboard();

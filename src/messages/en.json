@@ -251,7 +251,10 @@
     "backToMatches": "Back to matches"
   },
   "footer": {
-    "tagline": "World Cup 2026 Match Center — an independent fan platform.",
-    "disclaimer": "Not affiliated with FIFA. Schedule data compiled from official sources; always verify kickoff times before traveling."
+    "tagline": "Mondial 2026 — FIFA World Cup Match Center",
+    "about": "Track every match, predict results, follow your favourite teams and venues across the USA, Canada & Mexico.",
+    "disclaimer": "Not affiliated with FIFA. Schedule data compiled from official sources; always verify kickoff times before traveling.",
+    "builtBy": "Built by",
+    "tech": "Next.js · Supabase · Vercel"
   }
 }

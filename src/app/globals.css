@@ -92,11 +92,19 @@ body {
 
 /* Subtle pitch-line backdrop for hero sections */
 .pitch-grid {
+  position: relative;
+}
+.pitch-grid::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
   background-image:
     linear-gradient(to right, color-mix(in srgb, var(--primary) 7%, transparent) 1px, transparent 1px),
     linear-gradient(to bottom, color-mix(in srgb, var(--primary) 7%, transparent) 1px, transparent 1px);
   background-size: 44px 44px;
   mask-image: radial-gradient(ellipse 80% 70% at 50% 0%, black 35%, transparent 75%);
+  border-radius: inherit;
 }
 
 /* Live pulse dot */
