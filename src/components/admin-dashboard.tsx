@@ -16,8 +16,10 @@ import {
   ShieldCheck,
   Trophy,
   UserCheck,
+  UserPlus,
   Users,
 } from "lucide-react";
+import type { UserProfile } from "@/lib/types";
 import { MATCHES } from "@/data/matches";
 import { ROUND_ORDER, type ResolvedMatch, type RoundId } from "@/lib/types";
 import { useUser } from "@/lib/hooks";
@@ -188,11 +190,18 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge variant={variant}>{status}</Badge>;
 }
 
-export function AdminDashboard() {
+export function AdminDashboard({ initialUser }: { initialUser?: UserProfile }) {
   const t = useTranslations("admin");
   const tr = useTranslations("rounds");
-  const { user, demoMode, loading: userLoading } = useUser();
+  const { user: authUser, demoMode, loading: authLoading, signOut: authSignOut } = useUser();
   const { resolved } = useResolvedMatches();
+
+  // Same server-bypass pattern as UserDashboard: if the server already
+  // confirmed admin auth, skip the client-side loading wait entirely.
+  const [hasSignedOut, setHasSignedOut] = useState(false);
+  const user = hasSignedOut ? null : (authUser ?? initialUser ?? null);
+  const userLoading = !initialUser && authLoading;
+  const signOut = useCallback(async () => { setHasSignedOut(true); await authSignOut(); }, [authSignOut]);
   const [dashboard, setDashboard] = useState<SuperAdminDashboardData | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("analytics");
   const [round, setRound] = useState<RoundId | "">("GS");
@@ -374,7 +383,7 @@ export function AdminDashboard() {
           {activeTab === "analytics" && dashboard && <AnalyticsTab dashboard={dashboard} />}
           {activeTab === "users" && dashboard && (
             <UsersTab
-              users={dashboard.users.rows}
+              summary={dashboard.users}
               busyKey={busyKey}
               onPatch={(id, payload, key) => adminPatch(`/api/admin/users/${encodeURIComponent(id)}`, payload, key)}
               onDelete={(id) =>
@@ -464,97 +473,110 @@ function AnalyticsTab({ dashboard }: { dashboard: SuperAdminDashboardData }) {
 }
 
 function UsersTab({
-  users,
+  summary,
   busyKey,
   onPatch,
   onDelete,
 }: {
-  users: AdminUserRow[];
+  summary: SuperAdminDashboardData["users"];
   busyKey: string | null;
   onPatch: (id: string, payload: Record<string, unknown>, key: string) => void;
   onDelete: (id: string) => void;
 }) {
+  // Show newest registrations first
+  const sorted = [...summary.rows].sort(
+    (a, b) => new Date(b.registrationDate).getTime() - new Date(a.registrationDate).getTime()
+  );
+
   return (
-    <Panel title="User management">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[860px] text-left text-sm">
-          <thead className="border-b text-xs uppercase text-muted-foreground">
-            <tr>
-              <th className="px-3 py-2">User</th>
-              <th className="px-3 py-2">Role</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2">Score</th>
-              <th className="px-3 py-2">Last login</th>
-              <th className="px-3 py-2 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {users.map((item) => (
-              <tr key={item.id}>
-                <td className="px-3 py-3">
-                  <p className="font-semibold">{item.name}</p>
-                  <p className="text-xs text-muted-foreground">{item.email ?? item.id}</p>
-                </td>
-                <td className="px-3 py-3">
-                  <StatusBadge status={item.role} />
-                </td>
-                <td className="px-3 py-3">
-                  <StatusBadge status={item.status} />
-                </td>
-                <td className="px-3 py-3">
-                  <span className="font-semibold">{item.predictionScore}</span>
-                  <span className="ms-2 text-xs text-muted-foreground">{item.rank ? `#${item.rank}` : "Unranked"}</span>
-                </td>
-                <td className="px-3 py-3 text-muted-foreground">{formatDateTime(item.lastLogin)}</td>
-                <td className="px-3 py-3">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busyKey === `user:role:${item.id}`}
-                      onClick={() =>
-                        onPatch(
-                          item.id,
-                          { role: item.role === "admin" ? "user" : "admin" },
-                          `user:role:${item.id}`
-                        )
-                      }
-                    >
-                      <ShieldCheck aria-hidden />
-                      {item.role === "admin" ? "User" : "Admin"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={item.status === "suspended" ? "secondary" : "outline"}
-                      disabled={busyKey === `user:status:${item.id}`}
-                      onClick={() =>
-                        onPatch(
-                          item.id,
-                          { status: item.status === "suspended" ? "active" : "suspended" },
-                          `user:status:${item.id}`
-                        )
-                      }
-                    >
-                      <UserCheck aria-hidden />
-                      {item.status === "suspended" ? "Activate" : "Suspend"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      disabled={busyKey === `user:delete:${item.id}`}
-                      onClick={() => onDelete(item.id)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {!users.length && <p className="py-8 text-center text-sm text-muted-foreground">No users found.</p>}
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Metric label="Total users" value={numberFormat(summary.total)} detail="All accounts" icon={Users} />
+        <Metric label="New this week" value={numberFormat(summary.newThisWeek)} detail="Registered last 7 days" icon={UserPlus} tone="accent" />
+        <Metric label="Active (30 d)" value={numberFormat(summary.activeLast30Days)} detail="Logged in last 30 days" icon={UserCheck} />
+        <Metric label="Admins" value={numberFormat(summary.admins)} detail={`${summary.suspended} suspended`} icon={ShieldCheck} tone="muted" />
       </div>
-    </Panel>
+
+      <Panel title={`All users (${numberFormat(summary.total)}) — newest first`}>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px] text-left text-sm">
+            <thead className="border-b text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2">Name</th>
+                <th className="px-3 py-2">Email</th>
+                <th className="px-3 py-2">Role</th>
+                <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Score</th>
+                <th className="px-3 py-2">Joined</th>
+                <th className="px-3 py-2">Last login</th>
+                <th className="px-3 py-2 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {sorted.map((item) => (
+                <tr key={item.id} className="hover:bg-muted/40">
+                  <td className="px-3 py-3 font-semibold">{item.name || "—"}</td>
+                  <td className="px-3 py-3 text-muted-foreground">{item.email ?? item.id}</td>
+                  <td className="px-3 py-3">
+                    <StatusBadge status={item.role} />
+                  </td>
+                  <td className="px-3 py-3">
+                    <StatusBadge status={item.status} />
+                  </td>
+                  <td className="px-3 py-3">
+                    <span className="font-semibold">{item.predictionScore}</span>
+                    {item.rank && <span className="ms-2 text-xs text-muted-foreground">#{item.rank}</span>}
+                  </td>
+                  <td className="px-3 py-3 text-muted-foreground">{formatDateTime(item.registrationDate)}</td>
+                  <td className="px-3 py-3 text-muted-foreground">{formatDateTime(item.lastLogin)}</td>
+                  <td className="px-3 py-3">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busyKey === `user:role:${item.id}`}
+                        onClick={() =>
+                          onPatch(item.id, { role: item.role === "admin" ? "user" : "admin" }, `user:role:${item.id}`)
+                        }
+                      >
+                        <ShieldCheck aria-hidden />
+                        {item.role === "admin" ? "Demote" : "Admin"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={item.status === "suspended" ? "secondary" : "outline"}
+                        disabled={busyKey === `user:status:${item.id}`}
+                        onClick={() =>
+                          onPatch(
+                            item.id,
+                            { status: item.status === "suspended" ? "active" : "suspended" },
+                            `user:status:${item.id}`
+                          )
+                        }
+                      >
+                        <UserCheck aria-hidden />
+                        {item.status === "suspended" ? "Activate" : "Suspend"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        disabled={busyKey === `user:delete:${item.id}`}
+                        onClick={() => onDelete(item.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!summary.rows.length && (
+            <p className="py-8 text-center text-sm text-muted-foreground">No users found.</p>
+          )}
+        </div>
+      </Panel>
+    </div>
   );
 }
 
