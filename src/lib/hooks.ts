@@ -75,15 +75,26 @@ export function useUser() {
       return;
     }
 
-    // onAuthStateChange fires synchronously with the cached session from
-    // storage (INITIAL_SESSION event) — no network call, so it cannot hang.
-    // getSession/getUser both try to refresh an expired token over the network
-    // and silently hang when the Supabase auth server is slow or unreachable.
+    // Hard deadline: if Supabase auth hasn't fired within 8 s (e.g. the
+    // project is paused, the token refresh is retrying, or the network is
+    // unreachable), stop waiting and treat the user as signed out.
+    // For the dashboard the server already confirmed auth via requireUser(),
+    // so this deadline only matters for the nav/other pages.
+    let settled = false;
+    const settle = () => {
+      if (!settled) {
+        settled = true;
+        setLoading(false);
+      }
+    };
+    const deadline = setTimeout(settle, 8_000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        clearTimeout(deadline);
         if (!session?.user) {
           setSupabaseProfile(null);
-          setLoading(false);
+          settle();
           return;
         }
         const user = session.user;
@@ -107,12 +118,15 @@ export function useUser() {
             role: "user",
           });
         } finally {
-          setLoading(false);
+          settle();
         }
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(deadline);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const user = isSupabaseConfigured() ? supabaseProfile : local.profile;

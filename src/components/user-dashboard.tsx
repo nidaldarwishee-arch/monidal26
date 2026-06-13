@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   Award,
@@ -27,6 +27,7 @@ import { MATCHES } from "@/data/matches";
 import { TEAMS, TEAM_MAP } from "@/data/teams";
 import { formatKickoff, hasKickedOff } from "@/lib/time";
 import { useUser } from "@/lib/hooks";
+import type { UserProfile } from "@/lib/types";
 import { useResolvedMatches } from "@/lib/use-resolved";
 import { isFinalResultStatus } from "@/lib/types";
 import type { UserDashboardData } from "@/lib/dashboard/service";
@@ -198,12 +199,28 @@ function ToggleRow({
   );
 }
 
-export function UserDashboard() {
+export function UserDashboard({ initialUser }: { initialUser?: UserProfile }) {
   const t = useTranslations("dashboard");
   const ta = useTranslations("auth");
   const locale = useLocale();
   const copy = COPY[locale === "ar" ? "ar" : "en"];
-  const { user, loading, signOut } = useUser();
+  const { user: authUser, loading: authLoading, signOut: authSignOut } = useUser();
+
+  // Track explicit sign-out so we can clear the server-provided initial user.
+  const [hasSignedOut, setHasSignedOut] = useState(false);
+
+  // If the server already confirmed auth (initialUser provided), skip the
+  // client-side loading state entirely. Prefer the live authUser once it
+  // resolves (fresher role/name), but keep the server user on auth errors.
+  const user: UserProfile | null = hasSignedOut
+    ? null
+    : (authUser ?? initialUser ?? null);
+  const loading = !initialUser && authLoading;
+
+  const signOut = useCallback(async () => {
+    setHasSignedOut(true);
+    await authSignOut();
+  }, [authSignOut]);
   const { resolved } = useResolvedMatches();
   const slotName = useSlotName();
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
