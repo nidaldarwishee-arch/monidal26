@@ -1,6 +1,6 @@
 {
   "crons": [
-    { "path": "/api/cron/sync?task=fixtures", "schedule": "0 6 * * *" },
-    { "path": "/api/cron/sync?task=results", "schedule": "0 3 * * *" }
+    { "path": "/api/cron/sync?task=auto",     "schedule": "*/15 * * * *" },
+    { "path": "/api/cron/sync?task=fixtures", "schedule": "0 */3 * * *" }
   ]
 }

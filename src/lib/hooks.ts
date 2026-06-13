@@ -13,6 +13,8 @@ import type { ResultsMap } from "@/lib/standings";
  * Official results: seed + database rows (when Supabase is configured) +
  * admin-entered local results (demo mode).
  */
+const RESULTS_POLL_MS = 3 * 60 * 1000; // re-fetch from Supabase every 3 min
+
 export function useOfficialResults(): ResultsMap {
   const local = useLocalState();
   const [dbResults, setDbResults] = useState<MatchResult[]>([]);
@@ -20,37 +22,45 @@ export function useOfficialResults(): ResultsMap {
   useEffect(() => {
     const supabase = getSupabaseBrowser();
     if (!supabase) return;
+
     let cancelled = false;
-    supabase
-      .from("match_results")
-      .select(
-        "match_n, home_goals, away_goals, winner_team_id, status, halftime_home_score, halftime_away_score, extra_time_home_score, extra_time_away_score, penalty_home_score, penalty_away_score, live_minute, last_synced_at, external_provider, external_match_id"
-      )
-      .eq("official", true)
-      .then(({ data }) => {
-        if (cancelled || !data) return;
-        setDbResults(
-          data.map((row) => ({
-            matchN: row.match_n,
-            homeGoals: row.home_goals,
-            awayGoals: row.away_goals,
-            winner: row.winner_team_id ?? undefined,
-            status: row.status === "live" || row.status === "halftime" ? row.status : "finished",
-            halftimeHomeGoals: row.halftime_home_score,
-            halftimeAwayGoals: row.halftime_away_score,
-            extraTimeHomeGoals: row.extra_time_home_score,
-            extraTimeAwayGoals: row.extra_time_away_score,
-            penaltyHomeGoals: row.penalty_home_score,
-            penaltyAwayGoals: row.penalty_away_score,
-            liveMinute: row.live_minute,
-            lastSyncedAt: row.last_synced_at,
-            externalProvider: row.external_provider,
-            externalMatchId: row.external_match_id,
-          }))
-        );
-      });
+
+    const fetchResults = () =>
+      supabase
+        .from("match_results")
+        .select(
+          "match_n, home_goals, away_goals, winner_team_id, status, halftime_home_score, halftime_away_score, extra_time_home_score, extra_time_away_score, penalty_home_score, penalty_away_score, live_minute, last_synced_at, external_provider, external_match_id"
+        )
+        .eq("official", true)
+        .then(({ data }) => {
+          if (cancelled || !data) return;
+          setDbResults(
+            data.map((row) => ({
+              matchN: row.match_n,
+              homeGoals: row.home_goals,
+              awayGoals: row.away_goals,
+              winner: row.winner_team_id ?? undefined,
+              status: row.status === "live" || row.status === "halftime" ? row.status : "finished",
+              halftimeHomeGoals: row.halftime_home_score,
+              halftimeAwayGoals: row.halftime_away_score,
+              extraTimeHomeGoals: row.extra_time_home_score,
+              extraTimeAwayGoals: row.extra_time_away_score,
+              penaltyHomeGoals: row.penalty_home_score,
+              penaltyAwayGoals: row.penalty_away_score,
+              liveMinute: row.live_minute,
+              lastSyncedAt: row.last_synced_at,
+              externalProvider: row.external_provider,
+              externalMatchId: row.external_match_id,
+            }))
+          );
+        });
+
+    fetchResults(); // initial load
+    const timer = setInterval(fetchResults, RESULTS_POLL_MS); // auto-refresh
+
     return () => {
       cancelled = true;
+      clearInterval(timer);
     };
   }, []);
 
