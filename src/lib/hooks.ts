@@ -99,8 +99,10 @@ export function useUser() {
     };
     const deadline = setTimeout(settle, 8_000);
 
+    console.log("[useUser] isConfigured:", isSupabaseConfigured(), "client ready");
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        console.log("[useUser] onAuthStateChange", _event, "hasSession:", !!session, "userId:", session?.user?.id?.slice(0, 8));
         clearTimeout(deadline);
         if (!session?.user) {
           setSupabaseProfile(null);

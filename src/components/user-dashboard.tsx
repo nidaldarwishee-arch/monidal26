@@ -217,6 +217,18 @@ export function UserDashboard({ initialUser }: { initialUser?: UserProfile }) {
     : (authUser ?? initialUser ?? null);
   const loading = !initialUser && authLoading;
 
+  // DEBUG — remove after root cause confirmed
+  useEffect(() => {
+    console.log("[Dashboard:auth]", {
+      hasInitialUser: !!initialUser,
+      initialUserId: initialUser?.id?.slice(0, 8),
+      authUser: !!authUser,
+      computedUser: !!user,
+      hasSignedOut,
+      loading,
+    });
+  });
+
   const signOut = useCallback(async () => {
     setHasSignedOut(true);
     await authSignOut();

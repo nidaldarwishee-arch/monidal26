@@ -34,5 +34,8 @@ export default async function DashboardPage({
     role: profile?.role === "admin" ? "admin" : "user",
   };
 
+  // DEBUG — visible in Vercel function logs
+  console.log("[DashboardPage] SSR user:", user.id.slice(0, 8), "hasProfile:", !!profile);
+
   return <UserDashboard initialUser={initialUser} />;
 }

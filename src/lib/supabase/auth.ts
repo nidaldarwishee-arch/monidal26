@@ -23,11 +23,11 @@ export async function getCurrentUser(): Promise<User | null> {
   const supabase = await getSupabaseServer();
   if (!supabase) return null;
 
-  const { data: claims, error: claimsError } = await supabase.auth.getClaims();
-  if (claimsError || !claims?.claims?.sub) return null;
-
+  // getUser() validates the JWT server-side with Supabase auth servers.
+  // Removed getClaims() (local JWT parse) — it can return false negatives when
+  // claims structure varies and is redundant with the getUser() network call.
   const { data, error } = await supabase.auth.getUser();
-  if (error) return null;
+  if (error || !data.user) return null;
   return data.user;
 }
 
