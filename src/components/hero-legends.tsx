@@ -8,11 +8,11 @@ export function HeroLegends() {
         src="/legends-bg.jpeg"
         alt=""
         aria-hidden
-        className="pointer-events-none absolute inset-0 h-full w-full object-cover object-top"
-        style={{ opacity: 0.22 }}
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+        style={{ opacity: 0.35 }}
       />
-      {/* bottom fade so text/cards sit cleanly over the image */}
-      <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/30 to-background/80" />
+      {/* light vignette — keeps text readable without hiding the image */}
+      <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-transparent to-background/55" />
     </>
   );
 }

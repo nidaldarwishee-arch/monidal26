@@ -37,9 +37,10 @@ export default async function HomePage({
 
   return (
     <div className="space-y-10">
-      <section className="pitch-grid relative -mx-4 -mt-6 overflow-hidden px-4 pb-10 pt-12 text-center md:pb-14 md:pt-16">
+      <section className="pitch-grid relative -mx-4 -mt-6 flex min-h-[calc(100svh-4rem)] flex-col justify-between overflow-hidden px-4 pb-12 pt-12 text-center md:pb-16 md:pt-20">
         <HeroLegends />
 
+        {/* Title block — top of hero */}
         <div className="relative z-10">
           <Badge className="mx-auto">{t("heroBadge")}</Badge>
           <h1 className="mx-auto mt-4 max-w-3xl font-display text-4xl font-bold leading-tight md:text-6xl">
@@ -50,34 +51,37 @@ export default async function HomePage({
           </p>
         </div>
 
-        <nav
-          aria-label="Quick links"
-          className="relative z-10 mx-auto mt-8 grid max-w-3xl grid-cols-2 gap-3 sm:grid-cols-5"
-        >
-          {QUICK.map(({ href, key, icon: Icon }) => (
-            <Link
-              key={key}
-              href={href}
-              className="group flex cursor-pointer flex-col items-center gap-2 rounded-2xl border bg-card p-4 transition-colors duration-200 hover:border-primary/50 hover:bg-primary/5"
-            >
-              <Icon
-                className="size-6 text-primary transition-transform duration-200 group-hover:-translate-y-0.5"
-                aria-hidden
-              />
-              <span className="text-sm font-semibold">{t(key)}</span>
-            </Link>
-          ))}
-        </nav>
+        {/* Quick links + stats — pinned to bottom of hero */}
+        <div className="relative z-10 space-y-6">
+          <nav
+            aria-label="Quick links"
+            className="mx-auto grid max-w-3xl grid-cols-2 gap-3 sm:grid-cols-5"
+          >
+            {QUICK.map(({ href, key, icon: Icon }) => (
+              <Link
+                key={key}
+                href={href}
+                className="group flex cursor-pointer flex-col items-center gap-2 rounded-2xl border bg-card/80 p-4 backdrop-blur-sm transition-colors duration-200 hover:border-primary/50 hover:bg-primary/5"
+              >
+                <Icon
+                  className="size-6 text-primary transition-transform duration-200 group-hover:-translate-y-0.5"
+                  aria-hidden
+                />
+                <span className="text-sm font-semibold">{t(key)}</span>
+              </Link>
+            ))}
+          </nav>
 
-        <dl className="relative z-10 mx-auto mt-8 grid max-w-2xl grid-cols-4 gap-3">
-          {STATS.map((s) => (
-            <div key={s.key} className="rounded-xl bg-muted/60 p-3">
-              <dt className="sr-only">{t(s.key)}</dt>
-              <dd className="font-display text-2xl font-bold text-primary">{s.value}</dd>
-              <dd className="text-xs font-medium text-muted-foreground">{t(s.key)}</dd>
-            </div>
-          ))}
-        </dl>
+          <dl className="mx-auto grid max-w-2xl grid-cols-4 gap-3">
+            {STATS.map((s) => (
+              <div key={s.key} className="rounded-xl bg-muted/60 p-3 backdrop-blur-sm">
+                <dt className="sr-only">{t(s.key)}</dt>
+                <dd className="font-display text-2xl font-bold text-primary">{s.value}</dd>
+                <dd className="text-xs font-medium text-muted-foreground">{t(s.key)}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
       </section>
 
       <HomeLive />
