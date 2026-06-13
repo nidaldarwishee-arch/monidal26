@@ -10,7 +10,7 @@ export function HeroLegends() {
       {/* Legendary players photo — grayscale white tint, 9% opacity */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/legends-bg.jpg"
+        src="/legends-bg.jpeg"
         alt=""
         aria-hidden
         className="absolute inset-0 h-full w-full object-cover object-top"

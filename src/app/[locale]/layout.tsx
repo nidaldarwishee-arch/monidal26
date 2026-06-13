@@ -69,7 +69,7 @@ export async function generateMetadata({
       locale: locale === "ar" ? "ar" : "en_US",
       images: [
         {
-          url: "/legends-bg.jpg",
+          url: "/legends-bg.jpeg",
           width: 1200,
           height: 630,
           alt: t("title"),
@@ -80,7 +80,7 @@ export async function generateMetadata({
       card: "summary_large_image",
       title: t("title"),
       description: t("description"),
-      images: ["/legends-bg.jpg"],
+      images: ["/legends-bg.jpeg"],
     },
     icons: {
       icon: [
