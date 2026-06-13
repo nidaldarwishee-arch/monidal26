@@ -12,6 +12,11 @@ import { MatchCard } from "@/components/match-card";
 
 const FEATURED = [7, 19, 21, 66, 70, 104];
 
+// Sorted once by UTC kickoff — MATCHES array is ordered by match number, not time.
+const SORTED_MATCHES = [...MATCHES].sort(
+  (a, b) => new Date(a.t).getTime() - new Date(b.t).getTime()
+);
+
 /** Countdown + today's and upcoming matches; client-only to stay timezone-true. */
 export function HomeLive() {
   const t = useTranslations("home");
@@ -23,9 +28,9 @@ export function HomeLive() {
   const { next, today, upcoming, featured } = useMemo(() => {
     const now = new Date();
     const todayKey = localDateKey(now.toISOString());
-    const next = MATCHES.find((m) => new Date(m.t) > now);
-    const today = MATCHES.filter((m) => localDateKey(m.t) === todayKey);
-    const upcoming = MATCHES.filter(
+    const next = SORTED_MATCHES.find((m) => new Date(m.t) > now);
+    const today = SORTED_MATCHES.filter((m) => localDateKey(m.t) === todayKey);
+    const upcoming = SORTED_MATCHES.filter(
       (m) => new Date(m.t) > now && localDateKey(m.t) !== todayKey
     ).slice(0, 6);
     const featured = FEATURED.map((n) => resolved.get(n)!).filter(Boolean);
