@@ -37,7 +37,10 @@ export default async function HomePage({
 
   return (
     <div className="space-y-10">
-      <section className="pitch-grid relative -mx-4 -mt-6 flex min-h-[calc(100svh-4rem)] flex-col justify-between overflow-hidden px-4 pb-12 pt-12 text-center md:pb-16 md:pt-20">
+      <section
+        className="pitch-grid relative -mt-6 flex min-h-[calc(100svh-4rem)] flex-col justify-between overflow-hidden px-4 pb-12 pt-12 text-center md:pb-16 md:pt-20"
+        style={{ width: "100vw", marginLeft: "calc(-50vw + 50%)", marginRight: "calc(-50vw + 50%)" }}
+      >
         <HeroLegends />
 
         {/* Title block — top of hero */}

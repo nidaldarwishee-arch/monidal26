@@ -65,6 +65,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: clip; /* lets full-bleed sections break out of max-w without scrollbar */
 }
 
 body {

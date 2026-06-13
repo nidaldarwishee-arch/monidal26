@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Bookmark, MapPin, Target } from "lucide-react";
 import { Link } from "@/i18n/navigation";
@@ -62,6 +63,10 @@ export function MatchCard({
   const locale = useLocale();
   const venue = VENUE_MAP[match.v];
   const local = useLocalState();
+  // Mount guard: SSR runs on the server (UTC); we only show times after the
+  // client has mounted so the user always sees their own local timezone.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const saved = local.saved.includes(match.n);
   const kickedOff = hasKickedOff(match.t);
   const live = isLiveResultStatus(match.result?.status);
@@ -105,7 +110,7 @@ export function MatchCard({
           {finished && <Badge variant="muted">{t("fullTime")}</Badge>}
         </div>
         <time dateTime={match.t} className="font-medium text-muted-foreground">
-          {formatDate(match.t, locale)} · {formatTime(match.t, locale)}
+          {mounted ? `${formatDate(match.t, locale)} · ${formatTime(match.t, locale)}` : " "}
         </time>
       </div>
 

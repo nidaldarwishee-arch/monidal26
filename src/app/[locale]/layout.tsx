@@ -43,7 +43,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "meta" });
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  // VERCEL_URL is auto-set by Vercel (e.g. project.vercel.app or custom domain).
+  // NEXT_PUBLIC_SITE_URL overrides it for a canonical production domain.
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
+  const ogImage = `${siteUrl}/legends-bg.jpeg`;
 
   return {
     metadataBase: new URL(siteUrl),
@@ -69,10 +75,12 @@ export async function generateMetadata({
       locale: locale === "ar" ? "ar" : "en_US",
       images: [
         {
-          url: "/legends-bg.jpeg",
+          url: ogImage,
+          secureUrl: ogImage,
           width: 1200,
           height: 630,
           alt: t("title"),
+          type: "image/jpeg",
         },
       ],
     },
@@ -80,7 +88,7 @@ export async function generateMetadata({
       card: "summary_large_image",
       title: t("title"),
       description: t("description"),
-      images: ["/legends-bg.jpeg"],
+      images: [ogImage],
     },
     icons: {
       icon: [
