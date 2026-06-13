@@ -38,6 +38,8 @@ export default async function HomePage({
   return (
     <div className="space-y-10">
       <section className="pitch-grid relative -mx-4 -mt-6 overflow-hidden px-4 pb-10 pt-12 text-center md:pb-14 md:pt-16">
+        <HeroLegends />
+
         <div className="relative z-10">
           <Badge className="mx-auto">{t("heroBadge")}</Badge>
           <h1 className="mx-auto mt-4 max-w-3xl font-display text-4xl font-bold leading-tight md:text-6xl">
@@ -47,8 +49,6 @@ export default async function HomePage({
             {t("heroSubtitle")}
           </p>
         </div>
-
-        <HeroLegends />
 
         <nav
           aria-label="Quick links"
