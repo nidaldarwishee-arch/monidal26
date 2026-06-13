@@ -21,7 +21,6 @@ export function SiteFooter() {
               Nidal
             </a>
           </span>
-          <span>{t("tech")}</span>
           <Link href="/en" className="hover:text-foreground hover:underline underline-offset-2">
             English
           </Link>

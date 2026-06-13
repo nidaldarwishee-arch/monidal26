@@ -289,7 +289,13 @@ export function AdminDashboard() {
   }
 
   if (!demoMode) {
-    if (userLoading) return null;
+    if (userLoading) {
+      return (
+        <div className="mx-auto max-w-md rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+          Loading…
+        </div>
+      );
+    }
     if (!user || user.role !== "admin") {
       return (
         <div className="mx-auto max-w-md space-y-3 py-16 text-center">
