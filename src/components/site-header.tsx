@@ -64,7 +64,7 @@ export function SiteHeader() {
             className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-xl px-3 text-sm font-semibold transition-colors duration-200 hover:bg-muted"
           >
             <CircleUserRound className="size-5 text-primary" aria-hidden />
-            <span className="hidden lg:inline">
+            <span className="max-w-[120px] truncate">
               {user ? user.name.split(" ")[0] : t("signIn")}
             </span>
           </Link>
