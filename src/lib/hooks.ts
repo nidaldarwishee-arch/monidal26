@@ -73,17 +73,25 @@ export function useUser() {
     if (!supabase) return;
 
     const load = async () => {
-      const { data } = await supabase.auth.getUser();
+      // --- [TEMP DEBUG] Remove after confirming auth works ---
+      const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+      console.log("[useUser] getSession:", sessionData.session ? `exp=${sessionData.session.expires_at}` : "null", sessionErr?.message ?? "");
+
+      const { data, error: userErr } = await supabase.auth.getUser();
+      console.log("[useUser] getUser:", data.user ? `uid=${data.user.id}` : "null", userErr?.message ?? "");
+      // --- [END TEMP DEBUG] ---
+
       if (!data.user) {
         setSupabaseProfile(null);
         setLoading(false);
         return;
       }
-      const { data: profile } = await supabase
+      const { data: profile, error: profileErr } = await supabase
         .from("profiles")
         .select("display_name, role")
         .eq("id", data.user.id)
         .single();
+      console.log("[useUser] profile:", profile ? `name="${profile.display_name}" role=${profile.role}` : "null", profileErr?.message ?? "");
       setSupabaseProfile({
         id: data.user.id,
         name: profile?.display_name ?? data.user.email ?? "User",

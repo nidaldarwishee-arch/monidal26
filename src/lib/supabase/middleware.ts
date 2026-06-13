@@ -29,7 +29,12 @@ export async function updateSession(
     },
   });
 
-  await supabase.auth.getClaims();
+  // getUser() validates the token server-side and refreshes it if expired.
+  // getClaims() only parses the JWT locally and does not guarantee cookie refresh.
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[middleware] getUser:", user ? `uid=${user.id}` : "null", error?.message ?? "");
+  }
 
   return supabaseResponse;
 }

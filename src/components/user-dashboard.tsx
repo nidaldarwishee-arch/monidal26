@@ -203,7 +203,7 @@ export function UserDashboard() {
   const ta = useTranslations("auth");
   const locale = useLocale();
   const copy = COPY[locale === "ar" ? "ar" : "en"];
-  const { user, signOut } = useUser();
+  const { user, loading, signOut } = useUser();
   const { resolved } = useResolvedMatches();
   const slotName = useSlotName();
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
@@ -262,6 +262,14 @@ export function UserDashboard() {
     [resolved]
   );
   const predictionItems = dashboard?.predictionItems ?? [];
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-md rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+        {copy.loading}
+      </div>
+    );
+  }
 
   if (!user) {
     return (
