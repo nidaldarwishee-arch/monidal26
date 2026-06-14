@@ -11,6 +11,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import { ServiceWorkerRegister } from "@/components/sw-register";
 import { AnalyticsTracker } from "@/components/analytics-tracker";
+import { PromoPopup } from "@/components/promo-popup";
 import "../globals.css";
 
 const inter = Inter({
@@ -141,6 +142,7 @@ export default async function LocaleLayout({
             <PWAInstallPrompt />
             <ServiceWorkerRegister />
             <AnalyticsTracker />
+            <PromoPopup />
           </NextIntlClientProvider>
         </ThemeProvider>
       </body>

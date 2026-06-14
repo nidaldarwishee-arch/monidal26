@@ -256,5 +256,12 @@
     "disclaimer": "Not affiliated with FIFA. Schedule data compiled from official sources; always verify kickoff times before traveling.",
     "builtBy": "Built by",
     "tech": "Next.js · Supabase · Vercel"
+  },
+  "promo": {
+    "title": "FIFA World Cup 2026",
+    "subtitle": "Sign in and write your predictions — enjoy the Mundial!",
+    "noAccount": "No account yet?",
+    "registerFree": "Register free",
+    "close": "Close"
   }
 }
