@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
 import { getSupabaseConfig } from "@/lib/supabase/env";
 import { touchLastLogin } from "@/lib/dashboard/service";
@@ -27,17 +28,18 @@ export async function GET(request: NextRequest) {
           getAll() {
             return request.cookies.getAll();
           },
-          setAll(cookiesToSet) {
+          setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
             cookiesToSet.forEach(({ name, value, options }) => {
-              response.cookies.set(name, value, options);
+              response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2]);
             });
           },
+
         },
       });
 
       await supabase.auth.exchangeCodeForSession(code);
       const { data } = await supabase.auth.getUser();
-      if (data.user) await touchLastLogin(supabase, data.user.id);
+      if (data.user) await touchLastLogin(supabase as unknown as SupabaseClient<Database>, data.user.id);
     }
   }
 
