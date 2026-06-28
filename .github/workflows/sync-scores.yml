@@ -2,8 +2,12 @@ name: Sync World Cup scores
 
 on:
   schedule:
+    # Every 15 minutes — live scores & results during match windows
     - cron: '*/15 * * * *'
+
+    # Every 3 hours — backfill any matches that finished without live tracking
     - cron: '0 */3 * * *'
+
   workflow_dispatch:
     inputs:
       task:
@@ -20,16 +24,20 @@ jobs:
     name: Live scores
     runs-on: ubuntu-latest
     if: github.event.schedule == '*/15 * * * *' || github.event.inputs.task == 'auto'
+
     steps:
       - name: Call auto-sync endpoint
         run: |
-          STATUS=$(curl -s -o /tmp/body.json -w "%{http_code}" -X POST \
+          STATUS=$(curl -sS -o /tmp/body.json -w "%{http_code}" -X POST \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.SITE_URL }}/api/cron/sync?task=auto")
+
           cat /tmp/body.json
           echo ""
           echo "HTTP status: $STATUS"
+
           if [ "$STATUS" -ge 400 ]; then
+            echo "Auto sync failed with HTTP $STATUS"
             exit 1
           fi
 
@@ -37,15 +45,19 @@ jobs:
     name: Backfill finished results
     runs-on: ubuntu-latest
     if: github.event.schedule == '0 */3 * * *' || github.event.inputs.task == 'fixtures'
+
     steps:
       - name: Call fixtures-sync endpoint
         run: |
-          STATUS=$(curl -s -o /tmp/body.json -w "%{http_code}" -X POST \
+          STATUS=$(curl -sS -o /tmp/body.json -w "%{http_code}" -X POST \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.SITE_URL }}/api/cron/sync?task=fixtures")
+
           cat /tmp/body.json
           echo ""
           echo "HTTP status: $STATUS"
+
           if [ "$STATUS" -ge 400 ]; then
+            echo "Fixtures sync failed with HTTP $STATUS"
             exit 1
           fi
